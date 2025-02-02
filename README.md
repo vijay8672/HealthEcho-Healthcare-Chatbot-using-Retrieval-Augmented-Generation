@@ -12,7 +12,7 @@
 - [Cache-Augmented Generation](#cache-augmented-generation-cag)
 - [Customization](#customization)
 - [Contributing](#contributing)
-- [License](#license)
+- [License](#https://github.com/vijay8672/HealthEcho-Healthcare-Chatbot-using-Cache-Augumented-Generation/blob/main/LICENSE)
 
 ## Introduction
 
