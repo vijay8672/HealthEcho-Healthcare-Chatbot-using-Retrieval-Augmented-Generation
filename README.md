@@ -31,12 +31,18 @@ To get started, follow the steps below:
 
 1. Clone this repository:
     ```bash
-    git clone https://github.com/yourusername/chatbot_project.git
+    git clone https://github.com/vijay8672/HealthEcho-Healthcare-Chatbot-using-Cache-Augumented-Generation.git
     cd chatbot_project
     ```
 
 2. Create and activate a virtual environment (optional but recommended):
     ```bash
+    if conda is locally installed in your device
+    conda create -p venv python==3.X -y  ## To create virtual environment
+    conda activate venv/                 ## To activate the virtual environment
+
+                    (or)
+    
     python -m venv venv
     source venv/bin/activate  # On Windows, use 'venv\Scripts\activate'
     ```
