@@ -1,6 +1,6 @@
 ## HealthEcho - Healthcare Chatbot using Cache Augumented Generation
 
-- Welcome to the **Cache-Augmented Generation (CAG) Chatbot**! This project integrates advanced techniques to enhance chatbot performance by using caching mechanisms to store and retrieve prior conversation histories and relevant documents, creating a more efficient and contextually aware AI assistant.
+    Welcome to the **Cache-Augmented Generation (CAG) Chatbot**! This project integrates advanced techniques to enhance chatbot performance by using caching mechanisms to store and retrieve prior conversation histories and relevant documents, creating a more efficient and contextually aware AI assistant.
 
 
 ## Table of Contents
