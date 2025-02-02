@@ -75,14 +75,14 @@ After installing the dependencies, you can run the chatbot. Here's how you can g
 
 This project has the following structure:
 
-chatbot_project/
-├── .env                      # Environment variables (API keys, etc.)
-├── chatbot.py                # Main chatbot interface
-├── chain_builder.py          # Combines all components into a single pipeline
-├── conversation.py           # Manages conversation history
-├── advanced_prompt.py        # Defines the advanced prompt template
-├── vectorstore_retriever.py  # Handles document loading and retrieval
-└── requirements.txt          # List of required dependencies
+    CAG in chatbot_project/
+    ├── .env                      # Environment variables (API keys, etc.)
+    ├── chatbot.py                # Main chatbot interface
+    ├── chain_builder.py          # Combines all components into a single pipeline
+    ├── conversation.py           # Manages conversation history
+    ├── advanced_prompt.py        # Defines the advanced prompt template
+    ├── vectorstore_retriever.py  # Handles document loading and retrieval
+    └── requirements.txt          # List of required dependencies
 
 ## License
 
