@@ -12,7 +12,7 @@
 - [Cache-Augmented Generation](#cache-augmented-generation-cag)
 - [Customization](#customization)
 - [Contributing](#contributing)
-- [License](#https://github.com/vijay8672/HealthEcho-Healthcare-Chatbot-using-Cache-Augumented-Generation/blob/main/LICENSE)
+- [License](#license)
 
 ## Introduction
 
@@ -68,4 +68,18 @@ After installing the dependencies, you can run the chatbot. Here's how you can g
 ## Project Structure
 
 This project has the following structure:
+
+chatbot_project/
+├── .env                      # Environment variables (API keys, etc.)
+├── chatbot.py                # Main chatbot interface
+├── chain_builder.py          # Combines all components into a single pipeline
+├── conversation.py           # Manages conversation history
+├── advanced_prompt.py        # Defines the advanced prompt template
+├── vectorstore_retriever.py  # Handles document loading and retrieval
+└── requirements.txt          # List of required dependencies
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
+
 
