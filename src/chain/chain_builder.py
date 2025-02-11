@@ -1,69 +1,63 @@
-# chain_builder.py
+from langchain_core.prompts import ChatPromptTemplate
+from src.conversations.fetch_conversation import get_all_conversations
+from src.retriever.vectorstore_retriever import retrieve_context, get_retriever
+from src.prompt_template.prompts import create_advanced_prompt_template
+from logging_module.logger import logger
+from langchain_chroma import Chroma
+from langchain_huggingface import HuggingFaceEmbeddings
 import os
-from dotenv import load_dotenv
 from langchain_groq import ChatGroq
-from langchain_core.runnables import RunnablePassthrough
-from langchain_core.runnables.history import RunnableWithMessageHistory
+from dotenv import load_dotenv
+import uuid
+from langchain.schema import HumanMessage, AIMessage
 
-from src.conversation_history.conversation import get_session_history
-from src.vectorstore_retriever.vectorstore_retriever import create_vectorstore, get_retriever
-from src.prompt_template.advanced_prompt import create_advanced_prompt_template
+load_dotenv()
 
+model_name = "abhinand/MedEmbed-small-v0.1"
+embeddings = HuggingFaceEmbeddings(model_name=model_name)
 
-def create_chatbot_chain(session_id: str = "default") -> object:
-    """
-    Creates a chatbot chain that integrates:
-      - ChatGroq (the language model)
-      - An advanced prompt template
-      - A vectorstore retriever (for document context, if desired)
-      - Conversation history management
+vector_store = Chroma(
+    persist_directory=r"C:\\Generative AI Projects\\CAG in Chatbot\\vectorstore",
+    embedding_function=embeddings
+)
 
-    The chain expects an input that is a dict. If a raw string is passed,
-    the base input function treats it as the question. The output dict is merged
-    with default values so that it always contains:
-      - "context"
-      - "question"
-      - "Language"
-      - "messages"
+groq_api_key = os.getenv("GROQ_API_KEY")
+groq_model_name = "llama3-8b-8192"
+model = ChatGroq(model=groq_model_name, groq_api_key=groq_api_key, max_tokens=500)
 
-    Returns:
-        A runnable chain object with integrated message history.
-    """
-    # Load environment variables
-    load_dotenv()
-    groq_api_key = os.getenv("GROQ_API_KEY")
-    if not groq_api_key:
-        raise ValueError("GROQ_API_KEY environment variable is not set.")
-    model_name = "llama-3.3-70b-versatile"
+def conversation_chain(query: str, session_id: str):
+    logger.info(f"Starting conversation chain for session: {session_id}")
+
+    # Step 1: Retrieve conversation history from Firestore
+    conversation_history = get_all_conversations(session_id)
     
-    # Initialize ChatGroq model
-    model = ChatGroq(model=model_name, groq_api_key=groq_api_key)
+    # Convert conversation history to a list of message objects
+    history_messages = []
+    if conversation_history:
+        for message in conversation_history:
+            history_messages.append(HumanMessage(content=message.get("user_query", "")))
+            history_messages.append(AIMessage(content=message.get("assistant_response", "")))
+
+    # Step 2: Retrieve context from vectorstore
+    retriever = get_retriever(vector_store)
+    context_docs = retrieve_context(retriever, query)
+    context_str = "\n".join([doc.page_content for doc in context_docs]) if context_docs else ""
     
-    # (Optional) Build vectorstore retriever if you want to include retrieved context.
-    vector_store = create_vectorstore()
-    retriever = get_retriever(vector_store, k=1)
-    # For this example, we’re not auto‑populating "context" with retrieved text.
-    
-    # Create advanced prompt template
-    prompt = create_advanced_prompt_template()
-    
-    # Create a base runnable that converts the input into the required dict,
-    # merging in default keys if any are missing.
-    def base_input_fn(x):
-         defaults = {"context": "", "Language": "English", "question": "", "messages": []}
-         if isinstance(x, dict):
-             merged = {**defaults, **x}
-         else:
-             merged = {"context": "", "Language": "English", "question": x, "messages": []}
-         return merged
-         
-    base_input_runnable = RunnablePassthrough(base_input_fn)
-    
-    # Build the chain by chaining the runnables
-    chain = base_input_runnable | prompt | model
-    
-    # Wrap the chain with message history management.
-    # The input_messages_key ("messages") tells the history runner where to find the conversation messages.
-    chain_with_history = RunnableWithMessageHistory(chain, get_session_history, input_messages_key="messages")
-    
-    return chain_with_history
+    # Step 3: Build the prompt template and format the input
+    prompt_template = create_advanced_prompt_template("english", "medical assistant")
+    formatted_prompt = prompt_template.format(input=query, history=history_messages, context=context_str)
+
+    # Step 4: Generate the response from the model
+    logger.info("Generating model response...")
+    try:
+        logger.info(f"Formatted Prompt: {formatted_prompt}")
+        response = model.invoke(formatted_prompt)  # Fix: Removed dictionary wrapping
+        return response
+    except Exception as e:
+        logger.error(f"Error in chain execution: {e}")
+        return "An error occurred while processing your request."
+
+if __name__ == "__main__":
+    session_id = str(uuid.uuid4())
+    response = conversation_chain(query="What is hepatitis?", session_id=session_id)
+    print(response)

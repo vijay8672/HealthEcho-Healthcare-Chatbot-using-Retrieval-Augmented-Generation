@@ -31,7 +31,7 @@ log_file_path=os.path.join(log_dir, log_file_name)
 
 logging.basicConfig(level=logging.INFO,
                     format=log_file_string_format,
-                    handlers=[logging.FileHandler(log_file_path),
+                    handlers=[logging.FileHandler(log_file_path, encoding="utf-8"),
                               logging.StreamHandler(sys.stdout)])
 
 logger=logging.getLogger("Summarizer Logger")
