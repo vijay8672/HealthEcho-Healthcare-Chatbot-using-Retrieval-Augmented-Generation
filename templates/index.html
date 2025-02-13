@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HealthEcho Chatbot</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <div class="sidebar" id="sidebar">
+        <button class="new-chat-btn" onclick="startNewChat()">+ New Chat</button>
+        <ul id="chatHistory"></ul>
+    </div>
+    <div class="chat-container">
+        <div class="chat-header">
+            <button id="toggleSidebar">☰</button>
+            <h2>HealthEcho Chatbot</h2>
+            <button id="darkModeToggle">🌙</button>
+        </div>
+        <div class="chat-messages" id="chatMessages"></div>
+        <form id="chatForm" class="chat-input">
+            <input type="text" id="userInput" placeholder="Type a message..." autocomplete="off">
+            <button type="submit" class="send-btn">➜</button>
+        </form>
+    </div>
+
+    <script>
+        const chatMessages = document.getElementById('chatMessages');
+        const chatForm = document.getElementById('chatForm');
+        const userInput = document.getElementById('userInput');
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        const sidebar = document.getElementById('sidebar');
+        const toggleSidebar = document.getElementById('toggleSidebar');
+        const chatHistoryList = document.getElementById('chatHistory');
+
+        let deviceID = localStorage.getItem('deviceID') || 'device_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('deviceID', deviceID);
+
+        let chatLog = JSON.parse(localStorage.getItem('chatLog')) || [];
+        let savedChats = JSON.parse(localStorage.getItem('savedChats')) || [];
+
+        function renderSavedChats() {
+            chatHistoryList.innerHTML = '';
+            savedChats.forEach((chat, index) => {
+                const chatItem = document.createElement('li');
+                chatItem.textContent = chat.title;
+                chatItem.addEventListener('click', () => {
+                    chatMessages.innerHTML = '';
+                    chat.log.forEach(item => {
+                        chatMessages.innerHTML += `<div class="message ${item.type}-message">${item.message}</div>`;
+                    });
+                });
+                chatHistoryList.appendChild(chatItem);
+            });
+        }
+
+        window.onload = function() {
+            renderSavedChats();
+            const now = new Date();
+            const hour = now.getHours();
+            let greeting = hour < 12 ? "Good Morning!" : hour < 18 ? "Good Afternoon!" : "Good Evening!";
+            chatMessages.innerHTML += `<div class="message bot-message">${greeting} How can I assist you today?</div>`;
+            chatLog.forEach(item => {
+                chatMessages.innerHTML += `<div class="message ${item.type}-message">${item.message}</div>`;
+            });
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            if (localStorage.getItem('darkMode') === 'enabled') {
+                document.body.classList.add('dark');
+                darkModeToggle.textContent = '☀️';
+            }
+        };
+
+        darkModeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark');
+            const darkModeEnabled = document.body.classList.contains('dark');
+            darkModeToggle.textContent = darkModeEnabled ? '☀️' : '🌙';
+            localStorage.setItem('darkMode', darkModeEnabled ? 'enabled' : 'disabled');
+        });
+
+        toggleSidebar.addEventListener('click', () => {
+            sidebar.classList.toggle('collapsed');
+        });
+
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const query = userInput.value.trim();
+            if (query === '') return;
+
+            chatLog.push({ type: 'user', message: query });
+            localStorage.setItem('chatLog', JSON.stringify(chatLog));
+
+            chatMessages.innerHTML += `<div class="message user-message">${query}</div>`;
+            userInput.value = '';
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            const typingIndicator = document.createElement('div');
+            typingIndicator.className = 'typing-indicator';
+            typingIndicator.innerHTML = `<span></span><span></span><span></span>`;
+            chatMessages.appendChild(typingIndicator);
+
+            try {
+                const response = await axios.post('/api/query', {
+                    query: query,
+                    device_id: deviceID
+                });
+                typingIndicator.remove();
+                chatLog.push({ type: 'bot', message: response.data.response });
+                localStorage.setItem('chatLog', JSON.stringify(chatLog));
+                chatMessages.innerHTML += `<div class="message bot-message">${response.data.response}</div>`;
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        });
+
+        function startNewChat() {
+            let title = chatLog.length > 0 ? chatLog[0].message : "Chat " + (savedChats.length + 1);
+            savedChats.push({ title, log: chatLog });
+            localStorage.setItem('savedChats', JSON.stringify(savedChats));
+            renderSavedChats();
+
+            chatMessages.innerHTML = '';
+            chatLog = [];
+            localStorage.setItem('chatLog', JSON.stringify(chatLog));
+
+            const now = new Date();
+            const hour = now.getHours();
+            let greeting = hour < 12 ? "Good Morning!" : hour < 18 ? "Good Afternoon!" : "Good Evening!";
+            chatMessages.innerHTML += `<div class="message bot-message">${greeting} How can I assist you today?</div>`;
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+    </script>
+</body>
+</html>
