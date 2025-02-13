@@ -9,7 +9,6 @@ redis
 langchain-community
 langchain-groq
 langchain_core
-ipykernel
 transformers>=4.39.0
 langchain-chroma
 langchain_huggingface
@@ -21,3 +20,7 @@ google-cloud-firestore
 beautifulsoup4
 flask
 langdetect
+google-cloud-aiplatform
+google-cloud-storage
+faiss-cpu
+flask_cors

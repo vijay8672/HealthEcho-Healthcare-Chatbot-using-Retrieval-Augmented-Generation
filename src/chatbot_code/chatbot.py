@@ -1,53 +1,57 @@
-# chatbot.py
-
-import os
-from google.cloud import firestore
-from dotenv import load_dotenv
-from langchain_text_splitters import Language
+import time  # Import time module
 from src.chain.chain_builder import conversation_chain
+from src.conversation.save_conversation import save_conversation_history  # Importing the save function
 from logging_module.logger import logger
-from src.conversations.save_conversation import save_conversation_history
-from src.conversations.fetch_conversation import get_all_conversations
-from langdetect import detect
-import uuid
+from langdetect import detect, LangDetectException  # Importing langdetect
 
-load_dotenv()
-
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.getenv("GOOGLE_SETUP_CREDENTIALS")
-db = firestore.Client()
-
-
-def chatbot(query: str, session_id: str) -> str:
+def detect_language(text: str) -> str:
+    """Detect the language of the input text."""
     try:
-        logger.info(f"Chatbot request for session {session_id}: {query}")
-        
-        language = detect(query)
+        # Detect the language of the input text
+        language = detect(text)
         logger.info(f"Detected language: {language}")
+        return language
+    except LangDetectException:
+        # Default to English if language detection fails
+        logger.warning("Language detection failed. Defaulting to English.")
+        return "en"
 
-        # Fetch conversation history from Firestore
-        conversation_history = get_all_conversations(session_id)
-        if not conversation_history:
-            conversation_history = []  # Ensure it's a list
+def process_query(query: str, device_id: str) -> str:
+    """Process a single query and return the response."""
+    try:
+        # Detect the language of the query
+        language = detect_language(query)
+        
+        # Record start time
+        query_start_time = time.time()
 
-        # Generate the assistant response using history from Firestore
-        assistant_response = conversation_chain(query, session_id)
-        logger.info(f"Chatbot response for session {session_id}: {assistant_response}")
+        # Process the query using the conversation chain
+        response = conversation_chain(query, device_id)
 
-        # Save conversation history to Firestore
-        save_conversation_history(query, str(assistant_response.content), language=language,session_id=session_id)
+        # Record end time after response is generated
+        response_end_time = time.time()
 
-        return assistant_response
+        # Extract the content from the AIMessage object
+        response_content = response.content if hasattr(response, 'content') else str(response)
+
+        # Save the conversation history with timestamps for response time calculation
+        save_conversation_history(
+            user_query=query,
+            assistant_response=response_content,  # Use extracted text content
+            language=language,  # Save the detected language
+            device_id=device_id,
+            query_start_time=query_start_time,   # Start time
+            response_end_time=response_end_time  # End time
+        )
+        
+        return response_content
 
     except Exception as e:
-        logger.error(f"Error in chatbot function: {e}")
-        return "An error occurred while processing your request."
+        logger.error(f"Error during conversation: {e}")
+        return "An error occurred. Please try again."
 
 if __name__ == "__main__":
-    while True:
-        user_query = input("Enter your question (or type 'exit'): ")
-        if user_query.lower() == "exit":
-            break
-
-        session_id = str(uuid.uuid4())  # Use a fixed session ID in production
-        response = chatbot(user_query, session_id)
-        print(f"Chatbot: {response}")
+    query = input("Enter your query: ")
+    device_id = "dummy_device_123"
+    response = process_query(query, device_id)
+    print("Response:", response)
