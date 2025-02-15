@@ -9,10 +9,14 @@ from logging_module.logger import logger
 # Load environment variables
 load_dotenv()
 
-# Set Google Cloud credentials
-credentials_path = os.getenv("GOOGLE_SETUP_CREDENTIALS")
-if not credentials_path:
-    raise ValueError("GOOGLE_SETUP_CREDENTIALS environment variable not set.")
+# Set the relative path to the JSON file within the project directory
+credentials_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'healthecho-chatbot-2b245fc7609a.json'))
+
+# Check if the file exists
+if not os.path.isfile(credentials_path):
+    raise FileNotFoundError("Service account key file not found at the specified path.")
+
+# Set the GOOGLE_APPLICATION_CREDENTIALS environment variable
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
 
 # Initialize Firestore Client once (better performance)

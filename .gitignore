@@ -11,3 +11,5 @@ config/
 __pycache__/
 
 .vscode
+
+*.json

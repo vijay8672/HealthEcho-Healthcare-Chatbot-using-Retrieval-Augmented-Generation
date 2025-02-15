@@ -1,6 +1,5 @@
 fastapi==0.115.8  
 uvicorn==0.34.0  
-redis==5.2.1  
 groq==0.16.0  
 pydantic==2.10.6  
 python-dotenv==1.0.1  
@@ -23,3 +22,24 @@ google-cloud-aiplatform==1.79.0
 google-cloud-storage==2.19.0  
 faiss-cpu==1.10.0  
 flask_cors==5.0.0  
+markdown==3.7
+
+-e .
+
+## docker image commands
+
+## docker build -t healthecho-frontend -f docker_frontend/Dockerfile .
+## docker build -t healthecho-backend -f docker_backend/Dockerfile .
+
+
+## Push Docker Images to google Artifact Registry 
+
+## docker tag healthecho-frontend asia-south1-docker.pkg.dev/healthecho-chatbot/healthecho/healthecho-frontend
+## docker tag healthecho-backend asia-south1-docker.pkg.dev/healthecho-chatbot/healthecho/healthecho-backend
+
+
+
+## Push the images:
+
+## docker push asia-south1-docker.pkg.dev/healthecho-chatbot/healthecho/healthecho-frontend
+## docker push asia-south1-docker.pkg.dev/healthecho-chatbot/healthecho/healthecho-backend

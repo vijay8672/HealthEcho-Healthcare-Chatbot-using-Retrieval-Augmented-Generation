@@ -15,17 +15,17 @@ groq_model_name = "llama3-8b-8192"
 model = ChatGroq(
     model=groq_model_name,
     groq_api_key=groq_api_key,
-    max_tokens=500,      # Maximum tokens for response
-    temperature=0.2,     # Lower value for factual consistency
+    max_tokens=700,      # Reduced tokens for faster response
+    temperature=0.1,     # Lower temperature for concise answers
     model_kwargs={
-        # Only include parameters explicitly supported by ChatGroq
-        "top_p": 0.9,  # Uncomment if needed
-        "frequency_penalty": 0.2,  # Uncomment if needed
-        "presence_penalty": 0.6  # Uncomment if needed
+        "top_p": 0.9,
+        "frequency_penalty": 0.2,
+        "presence_penalty": 0.6
     }
 )
+
 def format_response(text: str) -> str:
-    """Formats the response into paragraphs, bullet points, and numbered lists."""
+    """Formats the response for proper Markdown rendering."""
     logger.info("Formatting response for better readability.")
     paragraphs = text.split("\n\n")
     formatted_output = []
@@ -33,19 +33,28 @@ def format_response(text: str) -> str:
     for para in paragraphs:
         lines = para.splitlines()
 
-        # Format numbered points
-        if all(line.strip().startswith(f"{i}.") for i, line in enumerate(lines, start=1)):
-            formatted_output.append(para)
+        # Convert to Headings if keywords are found
+        if any(para.startswith(keyword) for keyword in [
+            "What is", "Causes of", "Symptoms of", "Types of", 
+            "Transmission of", "Prevention of"
+        ]):
+            formatted_output.append(f"### {para}")
         
-        # Format bullet points
-        elif all(line.strip().startswith("-") or line.strip().startswith("*") for line in lines):
-            formatted_output.append(para)
+        # Bullet Points - Only if line starts with "-" or "*"
+        elif all(line.strip().startswith(("-", "*")) for line in lines):
+            formatted_output.extend([line.strip() for line in lines])
         
-        # General paragraph
+        # Numbered Lists - Only if line starts with a number
+        elif all(line.strip()[0].isdigit() and line.strip()[1] == '.' for line in lines):
+            formatted_output.extend(lines)
+        
+        # General Paragraph - No bullet points added
         else:
-            formatted_output.append(f"<p>{para}</p>")
+            formatted_output.append(para)
 
-    return "\n".join(formatted_output)
+    return "\n\n".join(formatted_output)
+
+
 
 def conversation_chain(query: str, device_id: str):
     """Manages the conversation flow and context retrieval."""
@@ -55,18 +64,19 @@ def conversation_chain(query: str, device_id: str):
     conversation_history = fetch_conversations(device_id)
     logger.info(f"Retrieved {len(conversation_history)} messages from conversation history.")
     
+    # Limit to the most recent 5 messages for context
     history_messages = [
         msg
-        for message in conversation_history
+        for message in conversation_history[-5:]  # Only use the last 5 messages
         for msg in (
             HumanMessage(content=message.get("user_query", "")),
             AIMessage(content=message.get("assistant_response", ""))
         )
     ]
 
-    # Retrieve context
+    # Retrieve context (limit to top 3 relevant docs)
     logger.info("Attempting to retrieve context using vector search.")
-    context_docs = retrieve_context(query)
+    context_docs = retrieve_context(query)[:3]  # Limit to top 3 context documents
     if context_docs:
         logger.info(f"Retrieved {len(context_docs)} context documents from vector search.")
     else:
