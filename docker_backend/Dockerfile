@@ -1,20 +1,22 @@
-# Use an official Python base image
+# Base image with Python
 FROM python:3.9-slim
 
-# Set the working directory
+# Set working directory
 WORKDIR /app
 
-# Copy only requirements first for caching
+# Copy requirements and install dependencies
 COPY requirements.txt .
-
-# Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application files
+# Copy the rest of the project files
 COPY . .
 
-# Expose the application port
+# Expose the port Flask will run on
 EXPOSE 5000
 
-# Start the application
+# Set environment variables (optional, for production)
+ENV FLASK_ENV=production
+ENV PYTHONUNBUFFERED=1
+
+# Start the Flask app
 CMD ["python", "app.py"]
