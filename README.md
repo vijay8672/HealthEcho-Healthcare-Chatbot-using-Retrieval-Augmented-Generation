@@ -30,7 +30,7 @@ This chatbot project utilizes Retrieval-Augmented Generation (RAG), which integr
 
 - **Improved Performance**: By caching past conversation history and relevant documents, response time is reduced.
 - **Context-Aware Responses**: The chatbot remembers prior conversations and integrates context for more coherent and meaningful answers.
-- **Efficient Document Retrieval**: Using a vector store, the chatbot can pull relevant documents to answer specific questions.
+- **Efficient Document Retrieval**: Using FAISS vector search, the chatbot efficiently retrieves relevant documents to answer specific questions.
 - **Markdown Support**: Responses are formatted with markdown for better readability and UI.
 - **Responsive UI**: The chatbot features a ChatGPT-like interface with dark mode toggle, full-page responsiveness, and a typing indicator.
 - **Extensible**: Easily customizable for adding new sources of data or improving response templates.
@@ -44,7 +44,6 @@ To get started, follow the steps below:
 1. Clone this repository:
     ```bash
     git clone https://github.com/vijay8672/HealthEcho-Healthcare-Chatbot-using-Retrieval-Augmented-Generation.git
-    cd chatbot_project
     ```
 
 2. Create and activate a virtual environment (optional but recommended):
@@ -67,7 +66,7 @@ To get started, follow the steps below:
     Create a `.env` file in the root of the project with the following details:
     ```
     OPENAI_API_KEY=your_openai_api_key
-    CHROMA_DB_PATH=your_chroma_db_path
+    HF_TOKEN= your_huggingface_token
     ```
 
 ---
@@ -98,14 +97,16 @@ This project has the following structure:
     │   │   └── chain_builder.py  # Combines all components into a single pipeline
     │   ├── conversation/
     │   │   └── save_conversation.py # Manages conversation history
+    │   │   └── fetch_conversation.py # fetches conversation history
     │   ├── prompt/
     │   │   └── advanced_prompt.py   # Defines the advanced prompt template
     │   └── retriever/
     │       └── vectorstore_retriever.py  # Handles document loading and retrieval
+    │   └── store/
+    │       └── vectorstore.py  # scrapes the data from WHO website and stores the embeddings in google cloud bucket
     ├── templates/
     │   └── index.html             # Frontend UI template
     ├── static/
-    │   └── css/
     │       └── styles.css         # Custom CSS
     └── requirements.txt           # List of required dependencies
 
@@ -114,11 +115,11 @@ This project has the following structure:
 ## Retrieval-Augmented Generation (RAG)
 
 This chatbot uses RAG to enhance its performance by:
-- Retrieving relevant information from a vector store.
+- Retrieving relevant information from embeddings stored in google storage bucket using FAISS vector search.
 - Integrating conversation history for contextual understanding.
 - Generating accurate and context-aware responses using the Groq model (llama3-8b-8192).
 
-The chatbot first checks the conversation history for context, then retrieves relevant data from the vector store if needed. If no history or vector data is found, the model generates a response based on the current query.
+The chatbot first checks the conversation history for context, then retrieves relevant data from the embeddings stored in google bucket if needed. If no history or vector data is found, the model generates a response based on the current query.
 
 ---
 
@@ -133,7 +134,7 @@ You can customize the chatbot by:
 
 ## Deployment
 
-This project is containerized using Docker for both frontend (Nginx) and backend (Flask) services. The containers are then deployed on **Google Cloud Run** for seamless scalability and management.  
+This project is containerized using Docker for both frontend (Nginx) and backend (Flask) services. The containers are then deployed on **Azure Container Registry** for seamless scalability and management.  
 
 ### Containerization
 
@@ -146,21 +147,15 @@ This project is containerized using Docker for both frontend (Nginx) and backend
     docker build -t healthecho-backend ./backend
     ```
 
-2. Push the Docker images to Google Container Registry:
+2. Push the Docker images to Azure Container Registry:
     ```bash
-    docker tag healthecho-frontend gcr.io/YOUR_PROJECT_ID/healthecho-frontend
-    docker push gcr.io/YOUR_PROJECT_ID/healthecho-frontend
+    docker tag chatbot-frontend health_chatbot.azurecr.io/chatbot-frontend:v1
+    docker tag chatbot-backend healthchatbot.azurecr.io/chatbot-backend:v1
 
-    docker tag healthecho-backend gcr.io/YOUR_PROJECT_ID/healthecho-backend
-    docker push gcr.io/YOUR_PROJECT_ID/healthecho-backend
+    docker push healthchatbot.azurecr.io/chatbot-frontend:v1
+    docker push healthchatbot.azurecr.io/chatbot-backend:v1
     ```
-
-3. Deploy on **Google Cloud Run**:
-    ```bash
-    gcloud run deploy healthecho-frontend --image gcr.io/YOUR_PROJECT_ID/healthecho-frontend --platform managed
-    gcloud run deploy healthecho-backend --image gcr.io/YOUR_PROJECT_ID/healthecho-backend --platform managed
-    ```
-
+    
 ---
 
 ## Contributing
