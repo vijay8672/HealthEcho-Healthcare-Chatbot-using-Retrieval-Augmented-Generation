@@ -29,12 +29,13 @@ log_file_path=os.path.join(log_dir, log_file_name)
 
 ## configure logging using basicconfig
 
-logging.basicConfig(level=logging.INFO,
+logging.basicConfig(level=logging.WARNING,
                     format=log_file_string_format,
-                    handlers=[logging.FileHandler(log_file_path, encoding="utf-8"),
-                              logging.StreamHandler(sys.stdout)])
+                    handlers=[
+                        logging.FileHandler(log_file_path, encoding="utf-8"),
+                              logging.StreamHandler()])
 
-logger=logging.getLogger("Summarizer Logger")
+logger = logging.getLogger(__name__)
 
 if __name__=="__main__":
     logger.info("This is a test log message")
