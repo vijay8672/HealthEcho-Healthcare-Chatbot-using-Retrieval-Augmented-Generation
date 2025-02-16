@@ -2,7 +2,7 @@
 
 Welcome to the **Retrieval-Augmented Generation (RAG) Chatbot**! This project integrates advanced techniques to enhance chatbot performance by using vector retrieval mechanisms to store and retrieve prior conversation histories and relevant documents, creating a more efficient and contextually aware AI assistant.
 
-![HealthEcho Chatbot](./path/to/image.png)  
+![image](https://github.com/user-attachments/assets/f0df6e4b-46af-4b75-9bcc-b012c6173121)
 
 ---
 
