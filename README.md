@@ -138,13 +138,9 @@ This project is containerized using Docker for both frontend (Nginx) and backend
 
 ### Containerization
 
-1. Build Docker images for both frontend and backend:
+1. Build Docker image :
     ```bash
-    # Frontend (Nginx)
-    docker build -t healthecho-frontend ./frontend
-
-    # Backend (Flask)
-    docker build -t healthecho-backend ./backend
+    docker build -t healthecho_chatbot .
     ```
 
 2. Push the Docker images to Azure Container Registry:
