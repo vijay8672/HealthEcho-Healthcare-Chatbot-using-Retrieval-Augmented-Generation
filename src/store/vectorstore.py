@@ -19,6 +19,7 @@ HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 }
 
+
 def get_all_fact_sheet_links():
     """Fetches all disease fact sheet links from WHO."""
     try:
@@ -41,12 +42,15 @@ def get_all_fact_sheet_links():
         ]
 
         if not links:
-            logger.warning("No fact sheet links found. WHO page structure may have changed.")
+            logger.warning(
+                "No fact sheet links found. WHO page structure may have changed."
+            )
         logger.info(f"Found {len(links)} fact sheet links.")
         return links
     except Exception as e:
         logger.error(f"Unexpected error: {e}")
         return []
+
 
 def scrape_disease_data(url):
     """Scrapes disease data from a WHO fact sheet URL."""
@@ -64,10 +68,12 @@ def scrape_disease_data(url):
 
         soup = BeautifulSoup(response.text, "html.parser")
         title = soup.find("h1").text.strip() if soup.find("h1") else "Unknown"
-        
+
         # More flexible selector for content extraction
         content_sections = soup.select("article p, article li")
-        content = "\n".join([p.text.strip() for p in content_sections if p.text.strip()])
+        content = "\n".join(
+            [p.text.strip() for p in content_sections if p.text.strip()]
+        )
 
         if not content:
             logger.warning(f"No content extracted from {url}")
@@ -77,6 +83,7 @@ def scrape_disease_data(url):
     except Exception as e:
         logger.error(f"Unexpected error while scraping {url}: {e}")
         return None
+
 
 def generate_and_upload_embeddings():
     """Scrapes WHO disease data, generates embeddings, and uploads to GCP."""
@@ -100,7 +107,7 @@ def generate_and_upload_embeddings():
     embeddings = embeddings_model.embed_documents(texts)
 
     # Convert to numpy array and normalize
-    embeddings_array = np.array(embeddings).astype('float32')
+    embeddings_array = np.array(embeddings).astype("float32")
     embeddings_array = normalize(embeddings_array)
     logger.info(f"Generated embeddings shape: {embeddings_array.shape}")
 
@@ -109,7 +116,7 @@ def generate_and_upload_embeddings():
     # Upload to GCS
     client = storage.Client()
     bucket = client.bucket(BUCKET_NAME)
-    
+
     # Upload .npy embeddings (using np.save for compatibility)
     embeddings_io = BytesIO()
     np.save(embeddings_io, embeddings_array)
@@ -117,11 +124,14 @@ def generate_and_upload_embeddings():
     blob = bucket.blob(EMBEDDINGS_PATH)
     blob.upload_from_file(embeddings_io, content_type="application/octet-stream")
     logger.info(f"Uploaded embeddings to gs://{BUCKET_NAME}/{EMBEDDINGS_PATH}")
-    
+
     # Upload metadata as JSON
     blob_metadata = bucket.blob(METADATA_PATH)
-    blob_metadata.upload_from_string(json.dumps(metadata, indent=2), content_type="application/json")
+    blob_metadata.upload_from_string(
+        json.dumps(metadata, indent=2), content_type="application/json"
+    )
     logger.info(f"Uploaded metadata to gs://{BUCKET_NAME}/{METADATA_PATH}")
+
 
 if __name__ == "__main__":
     generate_and_upload_embeddings()

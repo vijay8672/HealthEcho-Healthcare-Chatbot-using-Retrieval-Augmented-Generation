@@ -10,7 +10,11 @@ from logging_module.logger import logger
 load_dotenv()
 
 # Set the relative path to the JSON file within the project directory
-credentials_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'healthecho-chatbot-2b245fc7609a.json'))
+credentials_path = os.path.abspath(
+    os.path.join(
+        os.path.dirname(__file__), "..", "..", "healthecho-chatbot-2b245fc7609a.json"
+    )
+)
 
 # Check if the file exists
 if not os.path.isfile(credentials_path):
@@ -26,6 +30,7 @@ except Exception as e:
     logger.error(f"Firestore Client Initialization Error: {e}")
     raise  # Raising instead of exit(1) for better error handling
 
+
 def fetch_conversations(device_id: str):
     """
     Fetches conversation history for a given device ID.
@@ -40,14 +45,16 @@ def fetch_conversations(device_id: str):
         if not device_id:
             raise ValueError("Device ID is required but not provided.")
 
-        collection = db.collection('conversations')
+        collection = db.collection("conversations")
         document_ref = collection.document(device_id)
         document = document_ref.get()
 
         if document.exists:
             data = document.to_dict()
-            messages = data.get('messages', [])
-            logger.info(f"Retrieved {len(messages)} messages for Device ID: {device_id}")
+            messages = data.get("messages", [])
+            logger.info(
+                f"Retrieved {len(messages)} messages for Device ID: {device_id}"
+            )
             return messages
         else:
             logger.info(f"No conversation found for Device ID: {device_id}")
@@ -56,6 +63,7 @@ def fetch_conversations(device_id: str):
     except Exception as e:
         logger.error(f"An error occurred while retrieving conversation history: {e}")
         return []  # Return empty list on failure
+
 
 # Test
 if __name__ == "__main__":

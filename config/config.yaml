@@ -1,0 +1,52 @@
+# Configuration file for the Chatbot Project
+
+# General settings
+app:
+  name: "HealthEcho - Healthcare Chatbot using Retrieval Augumented Generation"
+  environment: "development"  # Change to "production" in production environments
+  debug: true  # Set to false in production
+
+# LLM settings
+llm:
+  model_name: "Llama-3.1-8b-instant"
+  endpoint_url: "https://api.groq.com/openai/v1/models"
+  temperature: 0.3  # Control randomness in the response
+  max_tokens: 1500  # Maximum token limit per request
+
+# Logging settings
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  log_file: "logs/.log"
+  log_to_console: true
+
+# API settings
+api:
+  host: "0.0.0.0"
+  port: 8000
+
+# Database settings (if needed)
+database:
+  type: "postgresql"
+  host: "localhost"
+  port: 5432
+  database_name: "chatbot_db"
+  username: "db_user"
+  password: "db_password"  # Secure this using environment variables
+
+# Secret management
+secrets:
+  use_env: true  # If true, fetch sensitive info (like API keys) from environment variables
+
+# Additional settings
+timeout_settings:
+  request_timeout: 15  # Timeout for API calls in seconds
+  connection_timeout: 10  # Timeout for connecting to external services
+
+# Language support
+language:
+  default: "en"
+  supported_languages:
+    - "en"
+    - "es"
+    - "fr"
+    - "de"

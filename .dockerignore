@@ -1,0 +1,16 @@
+# Exclude sensitive and unnecessary files
+.env
+__pycache__/
+*.pyc
+*.pyo
+logs/
+research/
+tests/
+venv/
+.git/
+.gitignore
+.DS_Store
+*.json
+*.log
+*.sqlite3
+healthecho-chatbot-2b245fc7609a.json

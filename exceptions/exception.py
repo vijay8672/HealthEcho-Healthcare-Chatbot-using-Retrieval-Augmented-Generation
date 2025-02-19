@@ -1,6 +1,7 @@
 import sys
 from logging_module.logger import logging
 
+
 def error_message_info(error, error_detail: sys):
     _, _, exc_tb = error_detail.exc_info()
     file_name = exc_tb.tb_frame.f_code.co_filename
@@ -10,6 +11,7 @@ def error_message_info(error, error_detail: sys):
         f"error message [{str(error)}]"
     )
     return error_message
+
 
 class CustomException(Exception):
     def __init__(self, error_message, error_detail: sys):
@@ -21,6 +23,7 @@ class CustomException(Exception):
 
     def log_error(self):
         logging.error(self.error_message)  # Log the full error message
+
 
 # Main block should use double underscores in "__main__"
 if __name__ == "__main__":

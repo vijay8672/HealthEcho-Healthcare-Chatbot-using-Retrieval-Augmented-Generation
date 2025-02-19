@@ -6,6 +6,13 @@ __pycache__/
 # C extensions
 *.so
 
+
+logs/
+*.log
+*.log.*
+
+healthecho-chatbot-2b245fc7609a.json
+
 # Distribution / packaging
 .Python
 build/
