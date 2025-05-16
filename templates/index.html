@@ -3,134 +3,361 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HealthEcho Chatbot</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}"> 
+    <title>ZiaHR</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/chatgpt-style-clean.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/file-upload.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/file-manager.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/message-files.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/input-attachments.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/notifications.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- PDF.js for PDF preview -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <!-- Mammoth.js for DOCX preview -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js"></script>
 </head>
-<body>
-    <div class="sidebar" id="sidebar">
-        <button class="new-chat-btn" onclick="startNewChat()">+ New Chat</button>
-        <ul id="chatHistory"></ul>
-    </div>
-    <div class="chat-container">
-        <div class="chat-header">
-            <button id="toggleSidebar">☰</button>
-            <h2>HealthEcho Chatbot</h2>
-            <button id="darkModeToggle">🌙</button>
+<body class="theme-light">
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <!-- Sidebar toggle button inside sidebar -->
+            <div class="sidebar-top-controls">
+                <button id="toggleSidebar" class="sidebar-toggle" style="display: flex; z-index: 1000;">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <span class="sidebar-title">ZiaHR</span>
+                <div class="sidebar-action-buttons">
+                    <button id="newChatBtn" class="sidebar-action-btn" title="New Chat">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                    <button id="sidebarSearchBtn" class="sidebar-action-btn" title="Search">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <button id="closeSidebar" class="sidebar-close">
+                    <i class="fas fa-times"></i>
+                </button>
+
+                <div class="sidebar-conversations">
+                    <div class="chat-history-list" id="chatHistory"></div>
+                </div>
+
+                <div class="sidebar-bottom">
+                    <!-- Upload document option removed from sidebar as per user request -->
+                    <form id="uploadForm" class="upload-form">
+                        <input type="file" id="fileUpload" accept=".pdf,.docx,.txt,.md" hidden multiple>
+                    </form>
+                    <div id="uploadStatus" class="upload-status" style="display: none;"></div>
+                </div>
+            </nav>
         </div>
-        <div class="chat-messages" id="chatMessages"></div>
-        <form id="chatForm" class="chat-input">
-            <input type="text" id="userInput" placeholder="Type a message..." autocomplete="off">
-            <button type="submit" class="send-btn">➜</button>
-        </form>
+
+        <!-- Main Chat Area -->
+        <main class="chat-container">
+            <header class="chat-header">
+                <div class="header-content">
+                    <div class="header-actions">
+                        <!-- Dark mode toggle in header -->
+                        <div class="header-theme-toggle">
+                            <label class="switch">
+                                <input type="checkbox" id="headerThemeToggle">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                        <!-- User account button -->
+                        <div class="user-account-dropdown">
+                            <button id="userAccountBtn" class="header-action-btn login-icon" title="Account">
+                                <i class="fas fa-user-circle"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="chat-messages" id="chatMessages">
+                <div class="welcome-container">
+                    <div class="welcome-message">
+                        <h2>Welcome to ZiaHR</h2>
+                        <p>I can help you with questions about company policies, employee guidelines, and HR procedures.</p>
+                        <div class="suggestion-chips">
+                            <button class="suggestion-chip" onclick="submitSuggestion('What is the company\'s leave policy?')">Leave Policy</button>
+                            <button class="suggestion-chip" onclick="submitSuggestion('How does the employee referral program work?')">Referral Program</button>
+                            <button class="suggestion-chip" onclick="submitSuggestion('What is the dress code policy?')">Dress Code</button>
+                            <button class="suggestion-chip" onclick="submitSuggestion('Tell me about the work from home policy')">Work from Home</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <footer class="chat-input-container">
+                <form id="chatForm" class="chat-input-form">
+                    <!-- Main input area -->
+                    <div class="input-main-area">
+                        <textarea id="userInput" placeholder="How can I help you today?" rows="1" autocomplete="off"></textarea>
+                    </div>
+
+                    <!-- Action buttons row -->
+                    <div class="input-actions-row">
+                        <div class="left-actions">
+                            <button type="button" id="quickUploadBtn" class="action-btn" title="Upload Documents">
+                                <i class="fas fa-paperclip"></i>
+                            </button>
+                            <input type="file" id="quickFileUpload" accept=".pdf,.docx,.txt,.md" hidden multiple>
+                            <button type="button" id="voiceInputBtn" class="action-btn" title="Voice Input">
+                                <i class="fas fa-microphone"></i>
+                            </button>
+                        </div>
+                        <div class="right-actions">
+                            <button type="submit" id="sendBtn" class="send-btn" title="Send message" disabled>
+                                <i class="fas fa-arrow-up"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- File list container (hidden, used for internal tracking) -->
+                    <div id="fileListContainer" class="file-list-container" style="display: none;"></div>
+
+                    <!-- Input attachments container (for showing files in input area) -->
+                    <div id="inputAttachmentsContainer" class="input-attachments-container" style="display: none;"></div>
+
+                    <!-- File display area -->
+                    <div class="file-display-area">
+                        <!-- Files will be dynamically added here by JavaScript -->
+                    </div>
+                </form>
+            </footer>
+        </main>
+
+        <!-- Source Panel - Hidden as per user request -->
+        <aside class="source-panel" id="sourcePanel" style="display: none;">
+            <div class="source-panel-header">
+                <h3>Sources</h3>
+                <button id="closeSourcePanel" class="icon-button">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="source-panel-content" id="sourcePanelContent">
+                <p>No sources available for this response.</p>
+            </div>
+        </aside>
     </div>
 
-    <script>
-        const chatMessages = document.getElementById('chatMessages');
-        const chatForm = document.getElementById('chatForm');
-        const userInput = document.getElementById('userInput');
-        const darkModeToggle = document.getElementById('darkModeToggle');
-        const sidebar = document.getElementById('sidebar');
-        const toggleSidebar = document.getElementById('toggleSidebar');
-        const chatHistoryList = document.getElementById('chatHistory');
+    <!-- Voice Recording Modal -->
+    <div class="modal" id="voiceModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Voice Input</h3>
+                <button id="closeVoiceModal" class="icon-button">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="recording-indicator">
+                    <div class="recording-waves">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                    <p id="recordingStatus">Listening...</p>
+                </div>
+                <div class="recording-controls">
+                    <button id="startRecording" class="record-btn">
+                        <i class="fas fa-microphone"></i> Start
+                    </button>
+                    <button id="stopRecording" class="record-btn" disabled>
+                        <i class="fas fa-stop"></i> Stop
+                    </button>
+                </div>
+                <div id="transcriptionResult" class="transcription-result" contenteditable="true" spellcheck="true" placeholder="Your speech will appear here..."></div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelVoiceInput" class="btn btn-secondary">Cancel</button>
+                <button id="submitVoiceInput" class="btn btn-primary" disabled>Submit</button>
+            </div>
+        </div>
+    </div>
 
-        let deviceID = localStorage.getItem('deviceID') || 'device_' + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem('deviceID', deviceID);
+    <!-- File Preview Modal -->
+    <div class="modal" id="filePreviewModal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h3 id="previewFileName">File Preview</h3>
+                <button id="closeFilePreviewModal" class="icon-button">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="filePreviewContainer" class="file-preview-container">
+                    <!-- Preview content will be inserted here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="closePreview" class="btn btn-secondary">Close</button>
+            </div>
+        </div>
+    </div>
 
-        let chatLog = JSON.parse(localStorage.getItem('chatLog')) || [];
-        let savedChats = JSON.parse(localStorage.getItem('savedChats')) || [];
+    <!-- Login Modal -->
+    <div class="modal" id="loginModal">
+        <div class="modal-content modern-login">
+            <div class="modal-header">
+                <h3>Log In</h3>
+                <button id="closeLoginModal" class="icon-button">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="login-form">
+                    <div class="form-group">
+                        <label for="username">Email Address</label>
+                        <input type="email" id="username" class="form-control" placeholder="Enter your email">
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <div class="password-input-wrapper">
+                            <input type="password" id="password" class="form-control" placeholder="Enter your password">
+                            <button type="button" class="password-toggle-btn" tabindex="-1">
+                                <i class="fas fa-eye password-icon"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-group forgot-password-container">
+                        <a href="#" class="forgot-password" id="forgotPassword">Forgot password?</a>
+                    </div>
+                    <div id="loginMessage" class="login-message"></div>
+                    <button id="submitLogin" class="btn btn-primary btn-block">Sign In</button>
+                    <div class="register-link-container">
+                        <span>Don't have an account?</span>
+                        <a href="#" id="registerLink">Register</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        function renderSavedChats() {
-            chatHistoryList.innerHTML = '';
-            savedChats.forEach((chat, index) => {
-                const chatItem = document.createElement('li');
-                chatItem.textContent = chat.title;
-                chatItem.addEventListener('click', () => {
-                    chatMessages.innerHTML = '';
-                    chat.log.forEach(item => {
-                        chatMessages.innerHTML += `<div class="message ${item.type}-message">${item.message}</div>`;
-                    });
-                });
-                chatHistoryList.appendChild(chatItem);
-            });
-        }
+    <!-- Registration Modal -->
+    <div class="modal" id="registerModal">
+        <div class="modal-content modern-login">
+            <div class="modal-header">
+                <h3>Register</h3>
+                <button id="closeRegisterModal" class="icon-button">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="login-form">
+                    <div class="form-group">
+                        <label for="fullName">Full Name</label>
+                        <input type="text" id="fullName" class="form-control" placeholder="Enter your full name">
+                    </div>
+                    <div class="form-group">
+                        <label for="registerEmail">Email Address</label>
+                        <input type="email" id="registerEmail" class="form-control" placeholder="Enter your email">
+                    </div>
+                    <div class="form-group">
+                        <label for="registerPassword">Password</label>
+                        <div class="password-input-wrapper">
+                            <input type="password" id="registerPassword" class="form-control" placeholder="Create a password">
+                            <button type="button" class="password-toggle-btn" tabindex="-1">
+                                <i class="fas fa-eye password-icon"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="companyName">Company Name</label>
+                        <input type="text" id="companyName" class="form-control" placeholder="Enter your company name">
+                    </div>
+                    <div id="registerMessage" class="login-message"></div>
+                    <button id="submitRegister" class="btn btn-primary btn-block">Create Account</button>
+                    <div class="register-link-container">
+                        <span>Already have an account?</span>
+                        <a href="#" id="loginLink">Log In</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        window.onload = function() {
-            renderSavedChats();
-            const now = new Date();
-            const hour = now.getHours();
-            let greeting = hour < 12 ? "Good Morning!" : hour < 18 ? "Good Afternoon!" : "Good Evening!";
-            chatMessages.innerHTML += `<div class="message bot-message">${greeting} How can I assist you today?</div>`;
-            chatLog.forEach(item => {
-                chatMessages.innerHTML += `<div class="message ${item.type}-message">${item.message}</div>`;
-            });
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+    <!-- Settings Modal -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h3>Settings</h3>
+                <button id="closeSettingsModal" class="icon-button">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-tabs">
+                    <div class="settings-tab active" data-tab="general">General</div>
+                    <div class="settings-tab" data-tab="archived-chats">Archived Chats</div>
+                </div>
+                <div class="settings-content">
+                    <!-- General Settings Tab -->
+                    <div class="settings-panel active" id="general-panel">
+                        <div class="settings-section">
+                            <h4>Appearance</h4>
+                            <div class="settings-option">
+                                <label for="settingsThemeToggle">Dark Mode</label>
+                                <div class="theme-toggle">
+                                    <label class="switch">
+                                        <input type="checkbox" id="settingsThemeToggle">
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="settings-section">
+                            <h4>Voice</h4>
+                            <div class="settings-option">
+                                <label for="settingsVoiceToggle">Text-to-Speech</label>
+                                <div class="voice-toggle">
+                                    <label class="switch">
+                                        <input type="checkbox" id="settingsVoiceToggle">
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-            if (localStorage.getItem('darkMode') === 'enabled') {
-                document.body.classList.add('dark');
-                darkModeToggle.textContent = '☀️';
-            }
-        };
+                    <!-- Archived Chats Tab -->
+                    <div class="settings-panel" id="archived-chats-panel">
+                        <div class="settings-section">
+                            <h4>Archived Conversations</h4>
+                            <div class="archived-chats-container" id="archivedChatsContainer">
+                                <div class="no-archived-chats">No archived chats found</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="closeSettings" class="btn btn-secondary">Close</button>
+                <button id="saveSettings" class="btn btn-primary">Save Changes</button>
+            </div>
+        </div>
+    </div>
 
-        darkModeToggle.addEventListener('click', () => {
-            document.body.classList.toggle('dark');
-            const darkModeEnabled = document.body.classList.contains('dark');
-            darkModeToggle.textContent = darkModeEnabled ? '☀️' : '🌙';
-            localStorage.setItem('darkMode', darkModeEnabled ? 'enabled' : 'disabled');
-        });
+    <!-- Analytics Dashboard Modal removed -->
 
-        toggleSidebar.addEventListener('click', () => {
-            sidebar.classList.toggle('collapsed');
-        });
+    <script src="{{ url_for('static', filename='js/chatgpt-ui-clean.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/speech-recognition.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/file-manager.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/user-account.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app-integration.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/settings-manager.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/hide-slider-homepage.js') }}"></script>
 
-        chatForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const query = userInput.value.trim();
-            if (query === '') return;
+    <script src="{{ url_for('static', filename='js/remove-debug.js') }}"></script>
 
-            chatLog.push({ type: 'user', message: query });
-            localStorage.setItem('chatLog', JSON.stringify(chatLog));
-
-            chatMessages.innerHTML += `<div class="message user-message">${query}</div>`;
-            userInput.value = '';
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-
-            const typingIndicator = document.createElement('div');
-            typingIndicator.className = 'typing-indicator';
-            typingIndicator.innerHTML = `<span></span><span></span><span></span>`;
-            chatMessages.appendChild(typingIndicator);
-
-            try {
-                const response = await axios.post('/api/query', {
-                query: query,
-                device_id: deviceID
-            });
-                typingIndicator.remove();
-                chatLog.push({ type: 'bot', message: response.data.response });
-                localStorage.setItem('chatLog', JSON.stringify(chatLog));
-                chatMessages.innerHTML += `<div class="message bot-message">${response.data.response}</div>`;
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-            } catch (error) {
-                console.error('Error:', error);
-            }
-        });
-
-        function startNewChat() {
-            let title = chatLog.length > 0 ? chatLog[0].message : "Chat " + (savedChats.length + 1);
-            savedChats.push({ title, log: chatLog });
-            localStorage.setItem('savedChats', JSON.stringify(savedChats));
-            renderSavedChats();
-
-            chatMessages.innerHTML = '';
-            chatLog = [];
-            localStorage.setItem('chatLog', JSON.stringify(chatLog));
-
-            const now = new Date();
-            const hour = now.getHours();
-            let greeting = hour < 12 ? "Good Morning!" : hour < 18 ? "Good Afternoon!" : "Good Evening!";
-            chatMessages.innerHTML += `<div class="message bot-message">${greeting} How can I assist you today?</div>`;
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-    </script>
 </body>
 </html>

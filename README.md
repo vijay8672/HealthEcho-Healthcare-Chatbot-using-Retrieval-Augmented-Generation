@@ -1,170 +1,150 @@
-# HealthEcho - Healthcare Chatbot using Retrieval-Augmented Generation (RAG)
+# Advanced Multi-Model RAG Chatbot
 
-Welcome to the **Retrieval-Augmented Generation (RAG) Chatbot**! This project integrates advanced techniques to enhance chatbot performance by using vector retrieval mechanisms to store and retrieve prior conversation histories and relevant documents, creating a more efficient and contextually aware AI assistant.
-
-![image](https://github.com/user-attachments/assets/f0df6e4b-46af-4b75-9bcc-b012c6173121)
-
----
-
-## Table of Contents
-- [Introduction](#introduction)
-- [Features](#features)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Project Structure](#project-structure)
-- [Retrieval-Augmented Generation](#retrieval-augmented-generation-rag)
-- [Customization](#customization)
-- [Deployment](#deployment)
-- [Contributing](#contributing)
-- [License](#license)
-
----
-
-## Introduction
-
-This chatbot project utilizes Retrieval-Augmented Generation (RAG), which integrates both conversation history and document retrieval techniques to enhance the chatbot's ability to provide relevant, contextual, and accurate responses. This approach significantly improves the performance of chatbot applications in handling user queries that require context from previous interactions or specific documents.
-
----
+An advanced HR assistant chatbot that uses Retrieval-Augmented Generation (RAG) to provide accurate responses based on company HR documents.
 
 ## Features
 
-- **Improved Performance**: By caching past conversation history and relevant documents, response time is reduced.
-- **Context-Aware Responses**: The chatbot remembers prior conversations and integrates context for more coherent and meaningful answers.
-- **Efficient Document Retrieval**: Using FAISS vector search, the chatbot efficiently retrieves relevant documents to answer specific questions.
-- **Markdown Support**: Responses are formatted with markdown for better readability and UI.
-- **Responsive UI**: The chatbot features a ChatGPT-like interface with dark mode toggle, full-page responsiveness, and a typing indicator.
-- **Extensible**: Easily customizable for adding new sources of data or improving response templates.
+- **Local Document Processing**: Process and index HR documents (PDF, DOCX, TXT, MD) without cloud dependencies
+- **Vector Search**: Fast and accurate retrieval of relevant information using FAISS
+- **Conversational AI**: Natural language understanding and generation using Groq's Llama 3 model
+- **Voice Interaction**: Speech-to-text and text-to-speech capabilities
+- **Modern UI/UX**: Responsive design with multiple themes and advanced features
+- **Source Attribution**: View the sources used to generate responses
+- **Document Upload**: Add new documents through the UI
+- **Chat History**: Save and manage conversation history
+- **Export Functionality**: Export conversations for record-keeping
+- **Email Escalation**: Automatically escalate unanswered HR questions to designated HR personnel
 
----
+## Architecture
 
-## Installation
+The chatbot uses a modular architecture with the following components:
 
-To get started, follow the steps below:
+1. **Document Processing**: Extract text from documents, chunk into manageable pieces, and generate embeddings
+2. **Vector Database**: Store and retrieve document embeddings for similarity search
+3. **Retrieval System**: Find relevant document chunks based on user queries
+4. **LLM Chain**: Generate responses using retrieved context and conversation history
+5. **Conversation Management**: Track and manage conversation history
+6. **Speech Processing**: Convert between speech and text
+7. **Web Interface**: Modern, responsive UI for user interaction
 
-1. Clone this repository:
-    ```bash
-    git clone https://github.com/vijay8672/HealthEcho-Healthcare-Chatbot-using-Retrieval-Augmented-Generation.git
-    ```
+## Getting Started
 
-2. Create and activate a virtual environment (optional but recommended):
-    ```bash
-    # If using conda
-    conda create -p venv python==3.X -y  # Create virtual environment
-    conda activate venv/                 # Activate the virtual environment
-    
-    # Or using venv
-    python -m venv venv
-    source venv/bin/activate  # On Windows, use 'venv\Scripts\activate'
-    ```
+### Prerequisites
 
-3. Install the required dependencies:
-    ```bash
-    pip install -r requirements.txt
-    ```
+- Python 3.9+
+- Virtual environment (recommended)
 
+### Installation
+
+1. Clone the repository
+2. Create and activate a virtual environment:
+   ```
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+3. Install dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
 4. Set up environment variables:
-    Create a `.env` file in the root of the project with the following details:
-    ```
-    OPENAI_API_KEY=your_openai_api_key
-    HF_TOKEN= your_huggingface_token
-    ```
+   - Create a `.env` file with your API keys and configuration:
+     ```
+     # Required
+     GROQ_API_KEY=your_api_key_here
 
----
+     # Optional - Email Escalation (if enabled)
+     SMTP_SERVER=smtp.gmail.com
+     SMTP_PORT=587
+     SMTP_USERNAME=your_email@gmail.com
+     SMTP_PASSWORD=your_app_password
+     SENDER_EMAIL=your_email@gmail.com
+     HR_EMAILS=hr1@company.com,hr2@company.com
+     ENABLE_EMAIL_ESCALATION=true
+     ```
 
-## Usage
+### Running the Chatbot
 
-After installing the dependencies, you can run the chatbot. Here's how you can get started:
+1. Start the application:
+   ```
+   python run_chatbot.py
+   ```
+2. Open your browser and navigate to `http://localhost:5000`
 
-1. Open a terminal and navigate to the project directory.
-2. Run the `app.py` script to start the chatbot:
-    ```bash
-    python app.py
-    ```
+## Adding HR Documents
 
-3. Open your browser and go to `http://localhost:5000` to interact with the chatbot.
+Place your HR documents in the `Hr Files` directory. The following formats are supported:
+- PDF (`.pdf`)
+- Microsoft Word (`.docx`)
+- Text files (`.txt`)
+- Markdown files (`.md`)
 
----
-
-## Project Structure
-
-This project has the following structure:
-
-    RAG in chatbot_project/
-    ├── .env                      # Environment variables (API keys, etc.)
-    ├── app.py                    # Main Flask application
-    ├── src/
-    │   ├── chain/
-    │   │   └── chain_builder.py  # Combines all components into a single pipeline
-    │   ├── conversation/
-    │   │   └── save_conversation.py # Manages conversation history
-    │   │   └── fetch_conversation.py # fetches conversation history
-    │   ├── prompt/
-    │   │   └── advanced_prompt.py   # Defines the advanced prompt template
-    │   └── retriever/
-    │       └── vectorstore_retriever.py  # Handles document loading and retrieval
-    │   └── store/
-    │       └── vectorstore.py  # scrapes the data from WHO website and stores the embeddings in google cloud bucket
-    ├── templates/
-    │   └── index.html             # Frontend UI template
-    ├── static/
-    │       └── styles.css         # Custom CSS
-    └── requirements.txt           # List of required dependencies
-
----
-
-## Retrieval-Augmented Generation (RAG)
-
-This chatbot uses RAG to enhance its performance by:
-- Retrieving relevant information from embeddings stored in google storage bucket using FAISS vector search.
-- Integrating conversation history for contextual understanding.
-- Generating accurate and context-aware responses using the Groq model (llama3-8b-8192).
-
-The chatbot first checks the conversation history for context, then retrieves relevant data from the embeddings stored in google bucket if needed. If no history or vector data is found, the model generates a response based on the current query.
-
----
+The documents will be automatically processed and indexed when the application starts.
 
 ## Customization
 
-You can customize the chatbot by:
-- Modifying prompt templates in `src/prompt/advanced_prompt.py`.
-- Changing vector retrieval settings in `src/retriever/vectorstore_retriever.py`.
-- Adjusting UI elements in `templates/index.html` and `static/css/styles.css`.
+- **Themes**: Choose from light, dark, blue, or green themes
+- **Voice Settings**: Enable or disable voice responses
+- **Model Settings**: Adjust model parameters in `config.py`
 
----
+## Development
 
-## Deployment
+### Project Structure
 
-This project is containerized using Docker for both frontend (Nginx) and backend (Flask) services. The containers are then deployed on **Azure Container Registry** for seamless scalability and management.  
-
-### Containerization
-
-1. Build Docker image :
-    ```bash
-    docker build -t healthecho_chatbot .
-    ```
-
-2. Push the Docker images to Azure Container Registry:
-    ```bash
-    docker tag chatbot-frontend health_chatbot.azurecr.io/chatbot-frontend:v1
-    docker tag chatbot-backend healthchatbot.azurecr.io/chatbot-backend:v1
-
-    docker push healthchatbot.azurecr.io/chatbot-frontend:v1
-    docker push healthchatbot.azurecr.io/chatbot-backend:v1
-    ```
-    
----
-
-## Contributing
-
-Contributions are welcome! If you'd like to contribute to this project, please follow these steps:
-1. Fork the repository.
-2. Create a new branch (`git checkout -b feature-branch-name`).
-3. Make your changes and commit them (`git commit -m 'Add new feature'`).
-4. Push to the branch (`git push origin feature-branch-name`).
-5. Open a pull request.
-
----
+```
+/advanced_rag_chatbot
+│
+├── app.py                      # Main application entry point
+├── config.py                   # Configuration settings
+│
+├── /database                   # Database modules
+│   ├── models.py               # SQLite database models
+│   ├── conversation_store.py   # Conversation storage and retrieval
+│   └── vector_store.py         # Vector database for embeddings
+│
+├── /document_processing        # Document processing modules
+│   ├── file_processor.py       # Process different file types
+│   ├── text_chunker.py         # Split documents into chunks
+│   ├── embedding_generator.py  # Generate embeddings for chunks
+│   └── training_pipeline.py    # End-to-end training pipeline
+│
+├── /retrieval                  # Retrieval modules
+│   ├── vector_search.py        # Vector similarity search
+│   └── context_builder.py      # Build context from retrieved chunks
+│
+├── /chain                      # LLM chain modules
+│   ├── prompt_templates.py     # Prompt templates for different scenarios
+│   └── chain_builder.py        # Build and execute LLM chains
+│
+├── /conversation               # Conversation modules
+│   ├── history_manager.py      # Manage conversation history
+│   └── language_detector.py    # Detect language of user input
+│
+├── /speech                     # Speech processing modules
+│   ├── speech_to_text.py       # Convert speech to text
+│   └── text_to_speech.py       # Convert text to speech
+│
+├── /utils                      # Utility modules
+│   ├── logger.py               # Logging functionality
+│   ├── error_handler.py        # Error handling utilities
+│   └── email_service.py        # Email service for escalations
+│
+├── /static                     # Static files
+│   ├── css/
+│   │   └── styles.css          # Main stylesheet
+│   ├── js/
+│   │   └── app.js              # Main JavaScript
+│   └── images/                 # Image assets
+│
+├── /templates                  # HTML templates
+│   └── index.html              # Main application page
+│
+└── /data                       # Data directory
+    ├── /embeddings             # Stored embeddings
+    ├── /processed              # Processed documents
+    ├── /raw                    # Raw input documents
+    └── /db                     # SQLite database files
+```
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
+This project is licensed under the MIT License - see the LICENSE file for details.

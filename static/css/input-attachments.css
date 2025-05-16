@@ -1,0 +1,123 @@
+/* Input Attachments Styling */
+.input-attachments-container {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px;
+    background-color: var(--input-bg);
+    border-radius: 8px;
+    max-width: 100%;
+    width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none; /* Hide scrollbar for Firefox */
+    -ms-overflow-style: none; /* Hide scrollbar for IE and Edge */
+    margin-bottom: 4px;
+    border: 1px solid var(--border-color);
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.input-attachments-container::-webkit-scrollbar {
+    display: none;
+}
+
+.input-attachments-container:empty {
+    display: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+}
+
+.input-attachment {
+    display: flex;
+    align-items: center;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 6px 8px;
+    width: auto;
+    min-width: 120px;
+    max-width: 200px;
+    position: relative;
+    margin-bottom: 0;
+    flex-shrink: 0;
+}
+
+.input-attachment .file-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 8px;
+    color: white;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+.input-attachment .file-info {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.input-attachment .file-name {
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 0;
+}
+
+.input-attachment .file-type {
+    font-size: 10px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+.input-attachment .remove-attachment {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 2px;
+    margin-left: 4px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+}
+
+.input-attachment .remove-attachment:hover {
+    background-color: rgba(220, 53, 69, 0.1);
+    color: var(--error-color);
+}
+
+/* Dark theme adjustments */
+.theme-dark .input-attachments-container {
+    border-color: var(--border-color);
+}
+
+.theme-dark .input-attachment {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+.theme-dark .input-attachment .remove-attachment:hover {
+    background-color: rgba(255, 107, 107, 0.15);
+    color: var(--cta-color);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .input-attachments-container {
+        padding: 6px;
+    }
+
+    .input-attachment {
+        max-width: 200px;
+    }
+}

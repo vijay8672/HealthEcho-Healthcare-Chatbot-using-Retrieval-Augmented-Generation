@@ -1,0 +1,81 @@
+/* Notification Styles */
+.duplicate-files-notification {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    width: 300px;
+    max-width: 90vw;
+    overflow: hidden;
+    animation: slideIn 0.3s ease;
+}
+
+.notification-header {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    background-color: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.notification-header i.fa-exclamation-circle {
+    color: var(--error-color);
+    margin-right: 8px;
+}
+
+.notification-header .close-notification {
+    margin-left: auto;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-secondary);
+}
+
+.notification-content {
+    padding: 10px 15px;
+}
+
+.notification-content ul {
+    margin-top: 5px;
+    padding-left: 20px;
+    font-size: 12px;
+}
+
+/* Animation keyframes */
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOut {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100%); opacity: 0; }
+}
+
+/* Make sure animations are applied */
+.duplicate-files-notification {
+    animation: slideIn 0.3s ease;
+}
+
+.duplicate-files-notification.slideOut {
+    animation: slideOut 0.3s ease forwards;
+}
+
+/* Dark theme adjustments */
+.theme-dark .duplicate-files-notification {
+    background-color: var(--bg-primary);
+    border-color: var(--border-color);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.theme-dark .notification-header {
+    background-color: var(--bg-secondary);
+}
+
+.theme-dark .notification-header i.fa-exclamation-circle {
+    color: var(--cta-color);
+}
