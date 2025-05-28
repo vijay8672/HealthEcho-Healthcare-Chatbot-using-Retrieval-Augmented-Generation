@@ -1,0 +1,140 @@
+/**
+ * Header Brand and Controls Styling
+ * Implements ChatGPT-like header with new chat button and brand
+ * Visible in both light and dark modes
+ */
+
+/* Header left section containing new chat and brand */
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px; /* Increased gap for better spacing */
+    position: relative;
+    margin-left: 10px; /* Add some margin from the left edge */
+}
+
+/* Remove gap when sidebar is collapsed */
+.sidebar.collapsed ~ .chat-container .header-left {
+    gap: 10px; /* Small gap between elements */
+    margin-left: 42px; /* Position after the menu icon (32px width + 10px spacing) */
+    padding-left: 0; /* Ensure no padding */
+    position: relative; /* Ensure proper positioning */
+}
+
+/* Header brand container */
+.header-brand {
+    display: flex;
+    align-items: center;
+    z-index: 15;
+}
+
+/* Position brand name when sidebar is collapsed */
+.sidebar.collapsed ~ .chat-container .header-brand {
+    margin-left: 0; /* Reset margin as we're positioning the entire header-left */
+}
+
+/* Brand name styling */
+.brand-name {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    padding: 0;
+    letter-spacing: 0.5px;
+}
+
+/* Dark mode support */
+.theme-dark .brand-name {
+    color: #FFFFFF;
+}
+
+/* Light mode specific color */
+.theme-light .brand-name {
+    color: #000000;
+}
+
+/* Header new chat button */
+.header-new-chat-btn {
+    display: none; /* Hidden by default when sidebar is open */
+    background-color: transparent !important; /* Transparent background to let the SVG show through */
+    border: none;
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%; /* Circular button */
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    box-shadow: none; /* Remove shadow as the SVG has its own styling */
+    position: relative; /* Required for absolute positioned children */
+    overflow: visible; /* Allow absolute positioning */
+}
+
+.header-new-chat-btn:hover {
+    transform: scale(1.05);
+}
+
+/* Dark mode styling */
+.theme-dark .header-new-chat-btn {
+    background-color: transparent !important; /* Transparent background to let the SVG show through */
+    box-shadow: none; /* Remove shadow as the SVG has its own styling */
+}
+
+.theme-dark .header-new-chat-btn:hover {
+    transform: scale(1.05);
+}
+
+/* New chat icon styling for header button */
+.header-new-chat-btn .new-chat-icon {
+    width: 28px; /* Increased size for better visibility */
+    height: 28px; /* Increased size for better visibility */
+    display: block;
+    position: absolute; /* Absolute positioning for perfect centering */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); /* Perfect centering */
+    margin: 0;
+    padding: 0;
+    filter: none !important; /* Ensure no filters are applied */
+    /* Prevent any browser-specific image rendering issues */
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+}
+
+/* Ensure no filters are applied to header new chat icon */
+.header-new-chat-btn img.new-chat-icon {
+    filter: none !important;
+}
+
+/* Ensure correct icon in dark mode */
+.theme-dark .header-new-chat-btn img.new-chat-icon {
+    filter: none !important;
+}
+
+/* When sidebar is collapsed, show the header controls */
+.sidebar.collapsed ~ .chat-container .header-new-chat-btn {
+    display: flex;
+    position: relative; /* Use relative positioning */
+    margin-left: 0; /* No margin */
+    top: auto; /* Reset top */
+    transform: none; /* Reset transform */
+}
+
+/* When sidebar is expanded, hide the header controls */
+.sidebar:not(.collapsed) ~ .chat-container .header-new-chat-btn {
+    display: none;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+    /* Always show the header controls on mobile */
+    .header-new-chat-btn {
+        display: flex;
+    }
+
+    /* When sidebar is active on mobile, hide the controls */
+    .sidebar.active ~ .chat-container .header-new-chat-btn {
+        opacity: 0;
+        visibility: hidden;
+    }
+}

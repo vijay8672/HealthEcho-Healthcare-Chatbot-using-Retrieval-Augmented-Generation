@@ -1,0 +1,83 @@
+/* Simple toast notification - Always light theme regardless of app theme */
+.simple-toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-100px);
+    background-color: rgba(255, 255, 255, 0.95) !important;
+    color: #333 !important;
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;
+    z-index: 9999;
+    transition: transform 0.3s ease-in-out;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 300px;
+    max-width: 80%;
+    font-size: 14px;
+    font-weight: 500;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+.simple-toast.show {
+    transform: translateX(-50%) translateY(0);
+}
+
+.simple-toast.success {
+    color: #4caf50 !important;
+}
+
+.simple-toast.error {
+    color: #f44336 !important;
+}
+
+.toast-close-btn {
+    background: none;
+    border: none;
+    color: #999 !important;
+    font-size: 16px;
+    cursor: pointer;
+    margin-left: 10px;
+    padding: 0;
+    line-height: 1;
+}
+
+.toast-close-btn:hover {
+    color: #333 !important;
+}
+
+/* Override any theme-specific styles to ensure light theme appearance */
+.theme-dark .simple-toast,
+.theme-light .simple-toast,
+[class*="theme-"] .simple-toast {
+    background-color: rgba(255, 255, 255, 0.95) !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;
+    color: #333 !important;
+}
+
+.theme-dark .simple-toast.success,
+.theme-light .simple-toast.success,
+[class*="theme-"] .simple-toast.success {
+    color: #4caf50 !important;
+}
+
+.theme-dark .simple-toast.error,
+.theme-light .simple-toast.error,
+[class*="theme-"] .simple-toast.error {
+    color: #f44336 !important;
+}
+
+.theme-dark .toast-close-btn,
+.theme-light .toast-close-btn,
+[class*="theme-"] .toast-close-btn {
+    color: #999 !important;
+}
+
+.theme-dark .toast-close-btn:hover,
+.theme-light .toast-close-btn:hover,
+[class*="theme-"] .toast-close-btn:hover {
+    color: #333 !important;
+}

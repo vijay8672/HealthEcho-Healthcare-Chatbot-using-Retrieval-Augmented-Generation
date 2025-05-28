@@ -1,4 +1,11 @@
 /* Input Attachments Styling */
+/* Apply consistent font family */
+.input-attachments-container,
+.input-attachment,
+.input-attachment .file-name,
+.input-attachment .file-type {
+    font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
+}
 .input-attachments-container {
     display: flex;
     flex-direction: row;
@@ -63,18 +70,20 @@
 }
 
 .input-attachment .file-name {
-    font-size: 12px;
-    font-weight: 500;
+    font-size: 0.75rem;
+    font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     margin-bottom: 0;
+    color: var(--text-primary);
 }
 
 .input-attachment .file-type {
-    font-size: 10px;
+    font-size: 0.625rem;
     color: var(--text-secondary);
     text-transform: uppercase;
+    font-weight: 400;
 }
 
 .input-attachment .remove-attachment {

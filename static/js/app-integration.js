@@ -84,6 +84,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Clean up localStorage first to remove duplicate empty chats
         cleanupLocalStorage();
 
+        // Clean up any duplicate chat input containers that might exist from previous sessions
+        cleanupDuplicateChatInputs();
+
         // Add event listener to stop speech when page is unloaded
         window.addEventListener('beforeunload', stopAllSpeech);
 
@@ -107,8 +110,15 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('Original startNewChat function not found, will use fallback');
         }
 
-        // Override the startNewChat function with our version
-        window.startNewChat = handleStartNewChat;
+        // We'll use the centralized handler from new-chat-handler.js
+        // But we'll also expose our functions for backward compatibility
+        window.handleStartNewChat = handleStartNewChat;
+
+        // If the centralized handler isn't loaded yet, use our function as a fallback
+        if (!window.newChatHandler) {
+            console.log('Centralized new chat handler not found, using app-integration.js version as fallback');
+            window.startNewChat = handleStartNewChat;
+        }
 
         // Setup voice input
         setupVoiceInput();
@@ -144,6 +154,17 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log(`Found chat ID in URL: ${chatIdFromUrl}`);
             // Load the chat from the URL parameter
             loadChatFromUrl(chatIdFromUrl);
+        }
+
+        // Initialize greeting message if user is logged in
+        try {
+            const userData = JSON.parse(localStorage.getItem('user_data') || 'null');
+            if (userData && typeof window.updateGreetingMessage === 'function') {
+                console.log('User is logged in, initializing greeting message');
+                window.updateGreetingMessage(userData);
+            }
+        } catch (error) {
+            console.error('Error initializing greeting message:', error);
         }
 
         console.log('ZiaHR app integration initialized');
@@ -262,11 +283,38 @@ function handleSuggestion(text) {
 // Add message to UI
 function addMessageToUI(type, message, messageId = null, timestamp = null) {
     try {
-        // Remove welcome container if it exists
-        const welcomeContainer = document.querySelector('.welcome-container');
-        if (welcomeContainer) {
-            welcomeContainer.remove();
-            console.log('Welcome container removed');
+        // Hide the greeting message when a user or bot message is added
+        // But only if we're not in the process of starting a new chat
+        if ((type === 'user' || type === 'bot') && !window.isStartingNewChat) {
+            if (typeof window.hideGreetingMessage === 'function') {
+                window.hideGreetingMessage();
+                console.log('Greeting message hidden when user/bot message is added');
+            }
+        }
+
+        // Remove all welcome containers if they exist (there might be duplicates)
+        const welcomeContainers = document.querySelectorAll('.welcome-container');
+        if (welcomeContainers.length > 0) {
+            welcomeContainers.forEach(container => {
+                container.remove();
+            });
+            console.log(`Removed ${welcomeContainers.length} welcome container(s)`);
+
+            // Reposition the chat input to the bottom when welcome container is removed
+            const chatInputContainer = document.querySelector('.chat-input-container');
+            if (chatInputContainer) {
+                // Ensure the chat input is properly centered horizontally and positioned at the bottom
+                chatInputContainer.style.position = 'fixed';
+                chatInputContainer.style.top = 'auto';
+                chatInputContainer.style.bottom = '24px';
+                chatInputContainer.style.transform = 'translate(-50%, 0)';
+                chatInputContainer.style.left = '50%';
+                chatInputContainer.style.marginLeft = '0';
+                chatInputContainer.style.right = 'auto';
+
+                // Add a class to indicate the welcome message has been removed
+                document.body.classList.add('welcome-removed');
+            }
         }
 
         const messageElement = document.createElement('div');
@@ -978,11 +1026,11 @@ function setupQuickUpload() {
 
                     // Show a toast notification about file limit
                     if (e.target.files.length > 7) {
-                        showToastNotification('File Limit', 'Only a maximum of 7 files can be uploaded at once.');
+                        showToastNotification('File Limit', 'Only a maximum of 7 files can be uploaded at once.', true); // true indicates error
                     }
                 } catch (uploadError) {
                     console.error('Error handling file upload:', uploadError);
-                    showToastNotification('Upload Error', 'There was an error uploading your files.');
+                    showToastNotification('Upload Error', 'There was an error uploading your files.', true); // true indicates error
                 }
 
                 // Clear the input to allow selecting the same files again
@@ -1078,10 +1126,93 @@ function playAudio(audioUrl) {
 
 // Note: chatHistory and currentChatId are already declared at the top of the file
 
+// Helper function to clean up any duplicate chat input containers and other UI elements
+function cleanupDuplicateChatInputs() {
+    try {
+        // Find all chat input containers
+        const chatInputContainers = document.querySelectorAll('.chat-input-container');
+
+        // If there's more than one, keep only the first one (the original)
+        if (chatInputContainers.length > 1) {
+            console.log(`Found ${chatInputContainers.length} chat input containers, removing duplicates`);
+
+            // Keep the first one (index 0) and remove the rest
+            for (let i = 1; i < chatInputContainers.length; i++) {
+                chatInputContainers[i].remove();
+            }
+
+            // Make sure the remaining one is properly positioned
+            const remainingContainer = document.querySelector('.chat-input-container');
+            if (remainingContainer) {
+                remainingContainer.style.position = 'fixed';
+                remainingContainer.style.top = 'auto';
+                remainingContainer.style.bottom = '24px';
+                remainingContainer.style.transform = 'translate(-50%, 0)';
+                remainingContainer.style.left = '50%';
+                remainingContainer.style.marginLeft = '0';
+                remainingContainer.style.right = 'auto';
+            }
+        }
+
+        // Also check for duplicate chat forms
+        const chatForms = document.querySelectorAll('#chatForm');
+        if (chatForms.length > 1) {
+            console.log(`Found ${chatForms.length} chat forms, removing duplicates`);
+
+            // Keep the first one and remove the rest
+            const originalForm = chatForms[0];
+            for (let i = 1; i < chatForms.length; i++) {
+                chatForms[i].remove();
+            }
+
+            // Make sure the original form is properly set up
+            if (originalForm && typeof handleChatSubmit === 'function') {
+                originalForm.onsubmit = handleChatSubmit;
+            }
+        }
+
+        // Check for duplicate welcome containers
+        const welcomeContainers = document.querySelectorAll('.welcome-container');
+        if (welcomeContainers.length > 1) {
+            console.log(`Found ${welcomeContainers.length} welcome containers, removing duplicates`);
+
+            // Keep only the first one
+            for (let i = 1; i < welcomeContainers.length; i++) {
+                welcomeContainers[i].remove();
+            }
+        }
+
+        // Check for duplicate greeting message containers
+        const greetingContainers = document.querySelectorAll('#greetingMessageContainer');
+        if (greetingContainers.length > 1) {
+            console.log(`Found ${greetingContainers.length} greeting containers, removing duplicates`);
+
+            // Keep only the first one
+            for (let i = 1; i < greetingContainers.length; i++) {
+                greetingContainers[i].remove();
+            }
+        }
+    } catch (error) {
+        console.error('Error cleaning up duplicate chat inputs:', error);
+    }
+}
+
 // Handle starting a new chat (saves current chat first)
 function handleStartNewChat() {
     try {
-        console.log('Starting new chat with history saving...');
+        console.log('handleStartNewChat called in app-integration.js');
+
+        // Use the centralized handler if available
+        if (window.newChatHandler && typeof window.newChatHandler.startNewChat === 'function') {
+            console.log('Delegating to centralized new chat handler');
+            window.newChatHandler.startNewChat();
+            return;
+        }
+
+        console.log('Centralized handler not available, using local implementation');
+
+        // Clean up any duplicate chat input containers that might exist
+        cleanupDuplicateChatInputs();
 
         // Save current chat if there are messages
         const messages = document.querySelectorAll('.message');
@@ -1133,79 +1264,73 @@ function handleStartNewChat() {
             // Clear UI
             chatMessages.innerHTML = '';
 
-            // Add welcome message and input container
+            // Remove the welcome-removed class if it exists
+            document.body.classList.remove('welcome-removed');
+
+            // Reset the chat input container position
+            const chatInputContainer = document.querySelector('.chat-input-container');
+            if (chatInputContainer) {
+                // Ensure the chat input is properly positioned at the bottom
+                chatInputContainer.style.position = 'fixed';
+                chatInputContainer.style.top = 'auto';
+                chatInputContainer.style.bottom = '24px';
+                chatInputContainer.style.transform = 'translate(-50%, 0)';
+                chatInputContainer.style.left = '50%';
+                chatInputContainer.style.marginLeft = '0';
+                chatInputContainer.style.right = 'auto';
+                console.log('Reset chat input container position for new chat');
+            }
+
+            // Show the greeting message if the user is logged in
+            const userData = JSON.parse(localStorage.getItem('user_data') || 'null');
+            if (userData && typeof window.updateGreetingMessage === 'function') {
+                window.updateGreetingMessage(userData);
+                console.log('Greeting message shown for new chat');
+            }
+
+            // Add only the welcome message (not a duplicate input container)
             chatMessages.innerHTML = `
                 <div class="welcome-container">
                     <div class="welcome-message">
-                        <h2>Welcome to HR Assistant</h2>
+                        <h2>👋 Welcome to ZiaHR</h2>
                         <p>I can help you with questions about company policies, employee guidelines, and HR procedures.</p>
                         <div class="suggestion-chips">
-                            <button class="suggestion-chip">Leave Policy</button>
-                            <button class="suggestion-chip">Referral Program</button>
-                            <button class="suggestion-chip">Dress Code</button>
-                            <button class="suggestion-chip">Work from Home</button>
+                            <button class="suggestion-chip">🗓️ Leave Policy</button>
+                            <button class="suggestion-chip">👥 Referral Program</button>
+                            <button class="suggestion-chip">👔 Dress Code</button>
+                            <button class="suggestion-chip">🏠 Work from Home</button>
                         </div>
                     </div>
-                </div>
-
-                <!-- Centered input container -->
-                <div class="chat-input-container">
-                    <form id="chatForm" class="chat-input-form">
-                        <!-- Main input area -->
-                        <div class="input-main-area">
-                            <textarea id="userInput" placeholder="How can I help you today?" rows="1" autocomplete="off"></textarea>
-                        </div>
-
-                        <!-- Action buttons row -->
-                        <div class="input-actions-row">
-                            <div class="left-actions">
-                                <button type="button" id="quickUploadBtn" class="action-btn" title="Upload Documents">
-                                    <i class="fas fa-paperclip"></i>
-                                </button>
-                                <input type="file" id="quickFileUpload" accept=".pdf,.docx,.txt,.md" hidden multiple>
-                                <button type="button" id="voiceInputBtn" class="action-btn" title="Voice Input">
-                                    <i class="fas fa-microphone"></i>
-                                </button>
-                            </div>
-                            <div class="right-actions">
-                                <button type="submit" id="sendBtn" class="send-btn" title="Send message" disabled>
-                                    <i class="fas fa-arrow-up"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- File list container (hidden, used for internal tracking) -->
-                        <div id="fileListContainer" class="file-list-container" style="display: none;"></div>
-
-                        <!-- File display area -->
-                        <div class="file-display-area">
-                            <!-- Files will be dynamically added here by JavaScript -->
-                        </div>
-                    </form>
                 </div>
             `;
 
             // Set up suggestion chips
-            const suggestionChips = document.querySelectorAll('.suggestion-chip');
+            const suggestionChips = document.querySelectorAll('.welcome-container .suggestion-chip');
             suggestionChips.forEach(chip => {
                 chip.addEventListener('click', function() {
                     const suggestion = this.textContent.trim();
                     handleSuggestion(suggestion);
                 });
             });
-        }
 
-        // Clear the user input field
-        const userInput = document.getElementById('userInput');
-        if (userInput) {
-            userInput.value = '';
-            userInput.style.height = 'auto';
-        }
+            // Make sure we're using the original chat form and input elements
+            const originalChatForm = document.getElementById('chatForm');
+            const originalUserInput = document.getElementById('userInput');
+            const originalSendBtn = document.getElementById('sendBtn');
 
-        // Disable the send button
-        const sendBtn = document.getElementById('sendBtn');
-        if (sendBtn) {
-            sendBtn.disabled = true;
+            if (originalChatForm && originalUserInput && originalSendBtn) {
+                // Re-attach event listeners to the original form
+                originalChatForm.onsubmit = handleChatSubmit;
+
+                // Make sure the input field is empty
+                originalUserInput.value = '';
+                originalUserInput.style.height = 'auto';
+
+                // Disable the send button
+                originalSendBtn.disabled = true;
+
+                console.log('Re-attached event listeners to original chat form elements');
+            }
         }
 
         // Handle sidebar state
@@ -1331,6 +1456,9 @@ function saveCurrentChat() {
             }
         }
 
+        // Get current timestamp
+        const now = new Date();
+
         // Create chat object
         const chat = {
             id: currentChatId,
@@ -1338,8 +1466,22 @@ function saveCurrentChat() {
             messages: chatMessages,
             // Use the global originalChatTimestamp if available, or the existing chat's timestamp,
             // or the current timestamp as a last resort
-            timestamp: window.originalChatTimestamp || (existingChat ? existingChat.timestamp : new Date().toISOString())
+            timestamp: window.originalChatTimestamp ||
+                      (existingChat && existingChat.timestamp && !isNaN(new Date(existingChat.timestamp).getTime()) ?
+                       existingChat.timestamp :
+                       now.toISOString())
         };
+
+        // Log the timestamp for debugging
+        console.log(`Chat timestamp for ${chat.id}: ${chat.timestamp}`);
+        console.log(`Chat timestamp date object:`, new Date(chat.timestamp));
+
+        // Validate the timestamp
+        const timestampDate = new Date(chat.timestamp);
+        if (isNaN(timestampDate.getTime())) {
+            console.warn(`Invalid timestamp detected for chat ${chat.id}, resetting to current time`);
+            chat.timestamp = now.toISOString();
+        }
 
         // If this chat already exists, update it
         const existingIndex = savedChats.findIndex(c => c.id === chat.id);
@@ -1366,6 +1508,22 @@ function saveCurrentChat() {
     }
 }
 
+// Fix any chats with invalid timestamps
+function fixChatTimestamps(chats) {
+    let fixed = false;
+    const now = new Date();
+
+    chats.forEach(chat => {
+        if (!chat.timestamp || isNaN(new Date(chat.timestamp).getTime())) {
+            console.warn(`Fixing invalid timestamp for chat "${chat.title}" (${chat.id})`);
+            chat.timestamp = now.toISOString();
+            fixed = true;
+        }
+    });
+
+    return fixed;
+}
+
 // Load saved chats from localStorage and populate sidebar
 function loadSavedChats() {
     try {
@@ -1390,6 +1548,12 @@ function loadSavedChats() {
             return true;
         });
 
+        // Fix any invalid timestamps
+        const timestampsFixed = fixChatTimestamps(savedChats);
+        if (timestampsFixed) {
+            console.log('Fixed invalid timestamps in saved chats');
+        }
+
         // Save filtered chats back to localStorage
         localStorage.setItem('ziahr_chats', JSON.stringify(savedChats));
 
@@ -1399,17 +1563,27 @@ function loadSavedChats() {
             createSampleChatHistory(chatHistoryElement);
         } else {
             // Group chats by date
-            const today = new Date();
+            const now = new Date();
+
+            // Get today's date (midnight)
+            const today = new Date(now);
             today.setHours(0, 0, 0, 0);
 
+            // Get yesterday's date (midnight)
             const yesterday = new Date(today);
             yesterday.setDate(yesterday.getDate() - 1);
 
+            // Get one week ago
             const oneWeekAgo = new Date(today);
             oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
+            // Get one month ago
             const oneMonthAgo = new Date(today);
             oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
+
+            console.log('Date boundaries for chat categorization:');
+            console.log('- Today starts at:', today.toISOString());
+            console.log('- Yesterday starts at:', yesterday.toISOString());
 
             let todayChats = [];
             let yesterdayChats = [];
@@ -1418,17 +1592,60 @@ function loadSavedChats() {
             let olderChats = [];
 
             savedChats.forEach(chat => {
-                const chatDate = new Date(chat.timestamp || 0);
-                if (chatDate >= today) {
+                try {
+                    // Parse the chat timestamp
+                    const chatDate = new Date(chat.timestamp || 0);
+
+                    // Skip invalid dates
+                    if (isNaN(chatDate.getTime())) {
+                        console.warn(`Chat "${chat.title}" (${chat.id}) has invalid timestamp: ${chat.timestamp}`);
+                        // Default to today for invalid dates
+                        todayChats.push(chat);
+                        return;
+                    }
+
+                    // Get the chat date at midnight for proper day comparison
+                    const chatDateMidnight = new Date(chatDate);
+                    chatDateMidnight.setHours(0, 0, 0, 0);
+
+                    // Debug logging
+                    console.log(`Chat "${chat.title}" (${chat.id}) timestamp:`, chatDate.toISOString());
+                    console.log(`Chat date at midnight:`, chatDateMidnight.toISOString());
+                    console.log(`Today midnight:`, today.toISOString());
+                    console.log(`Yesterday midnight:`, yesterday.toISOString());
+
+                    // Compare dates using time values for more reliable comparison
+                    const chatTime = chatDateMidnight.getTime();
+                    const todayTime = today.getTime();
+                    const yesterdayTime = yesterday.getTime();
+                    const weekAgoTime = oneWeekAgo.getTime();
+                    const monthAgoTime = oneMonthAgo.getTime();
+
+                    // Categorize based on time comparisons
+                    if (chatTime === todayTime) {
+                        console.log(`Chat "${chat.title}" categorized as TODAY`);
+                        todayChats.push(chat);
+                    } else if (chatTime === yesterdayTime) {
+                        console.log(`Chat "${chat.title}" categorized as YESTERDAY`);
+                        yesterdayChats.push(chat);
+                    } else if (chatTime > yesterdayTime && chatTime < todayTime) {
+                        // This should never happen but just in case
+                        console.log(`Chat "${chat.title}" categorized as TODAY (fallback)`);
+                        todayChats.push(chat);
+                    } else if (chatTime >= weekAgoTime && chatTime < yesterdayTime) {
+                        console.log(`Chat "${chat.title}" categorized as PREVIOUS WEEK`);
+                        previousWeekChats.push(chat);
+                    } else if (chatTime >= monthAgoTime && chatTime < weekAgoTime) {
+                        console.log(`Chat "${chat.title}" categorized as PREVIOUS MONTH`);
+                        previousMonthChats.push(chat);
+                    } else {
+                        console.log(`Chat "${chat.title}" categorized as OLDER`);
+                        olderChats.push(chat);
+                    }
+                } catch (error) {
+                    console.error(`Error categorizing chat "${chat.title}" (${chat.id}):`, error);
+                    // Default to today for any errors
                     todayChats.push(chat);
-                } else if (chatDate >= yesterday) {
-                    yesterdayChats.push(chat);
-                } else if (chatDate >= oneWeekAgo) {
-                    previousWeekChats.push(chat);
-                } else if (chatDate >= oneMonthAgo) {
-                    previousMonthChats.push(chat);
-                } else {
-                    olderChats.push(chat);
                 }
             });
 
@@ -1442,13 +1659,23 @@ function loadSavedChats() {
             // Update the full chat history with sorted chats
             chatHistory = [...todayChats, ...yesterdayChats, ...previousWeekChats, ...previousMonthChats, ...olderChats];
 
+            // Log the number of chats in each category
+            console.log(`Chat counts by category:`);
+            console.log(`- Today: ${todayChats.length}`);
+            console.log(`- Yesterday: ${yesterdayChats.length}`);
+            console.log(`- Previous Week: ${previousWeekChats.length}`);
+            console.log(`- Previous Month: ${previousMonthChats.length}`);
+            console.log(`- Older: ${olderChats.length}`);
+
             // Add "Today" section
             if (todayChats.length > 0) {
                 const todayHeader = document.createElement('div');
                 todayHeader.className = 'chat-history-header';
                 todayHeader.textContent = 'Today';
+                todayHeader.id = 'today-header';
                 chatHistoryElement.appendChild(todayHeader);
                 todayChats.forEach(chat => addChatItem(chat, chatHistoryElement));
+                console.log('Added TODAY header and chats to sidebar');
             }
 
             // Add "Yesterday" section
@@ -1456,8 +1683,10 @@ function loadSavedChats() {
                 const yesterdayHeader = document.createElement('div');
                 yesterdayHeader.className = 'chat-history-header';
                 yesterdayHeader.textContent = 'Yesterday';
+                yesterdayHeader.id = 'yesterday-header';
                 chatHistoryElement.appendChild(yesterdayHeader);
                 yesterdayChats.forEach(chat => addChatItem(chat, chatHistoryElement));
+                console.log('Added YESTERDAY header and chats to sidebar');
             }
 
             // Add "Previous 7 Days" section
@@ -1465,8 +1694,10 @@ function loadSavedChats() {
                 const previousWeekHeader = document.createElement('div');
                 previousWeekHeader.className = 'chat-history-header';
                 previousWeekHeader.textContent = 'Previous 7 Days';
+                previousWeekHeader.id = 'previous-week-header';
                 chatHistoryElement.appendChild(previousWeekHeader);
                 previousWeekChats.forEach(chat => addChatItem(chat, chatHistoryElement));
+                console.log('Added PREVIOUS WEEK header and chats to sidebar');
             }
 
             // Add "Previous 30 Days" section
@@ -1474,30 +1705,37 @@ function loadSavedChats() {
                 const previousMonthHeader = document.createElement('div');
                 previousMonthHeader.className = 'chat-history-header';
                 previousMonthHeader.textContent = 'Previous 30 Days';
+                previousMonthHeader.id = 'previous-month-header';
                 chatHistoryElement.appendChild(previousMonthHeader);
                 previousMonthChats.forEach(chat => addChatItem(chat, chatHistoryElement));
+                console.log('Added PREVIOUS MONTH header and chats to sidebar');
             }
 
             // Add older chats by month name
             if (olderChats.length > 0) {
-                // Group older chats by month
+                // Group older chats by month and year
                 const monthGroups = {};
                 olderChats.forEach(chat => {
                     const chatDate = new Date(chat.timestamp || 0);
                     const monthName = chatDate.toLocaleString('default', { month: 'long' });
-                    if (!monthGroups[monthName]) {
-                        monthGroups[monthName] = [];
+                    const year = chatDate.getFullYear();
+                    const monthKey = `${monthName} ${year}`;
+
+                    if (!monthGroups[monthKey]) {
+                        monthGroups[monthKey] = [];
                     }
-                    monthGroups[monthName].push(chat);
+                    monthGroups[monthKey].push(chat);
                 });
 
                 // Add each month group
-                Object.keys(monthGroups).forEach(monthName => {
+                Object.keys(monthGroups).forEach(monthKey => {
                     const monthHeader = document.createElement('div');
                     monthHeader.className = 'chat-history-header';
-                    monthHeader.textContent = monthName;
+                    monthHeader.textContent = monthKey;
+                    monthHeader.id = `month-header-${monthKey.replace(/\s+/g, '-').toLowerCase()}`;
                     chatHistoryElement.appendChild(monthHeader);
-                    monthGroups[monthName].forEach(chat => addChatItem(chat, chatHistoryElement));
+                    monthGroups[monthKey].forEach(chat => addChatItem(chat, chatHistoryElement));
+                    console.log(`Added ${monthKey} header and chats to sidebar`);
                 });
             }
         }
@@ -1558,12 +1796,19 @@ function showNotificationDialog(title, message, buttonText = 'OK') {
 
     // Create dialog
     const dialog = document.createElement('div');
-    dialog.className = 'notification-dialog';
+    dialog.className = 'notification-dialog light-theme-notification';
+
+    // Force light theme styling with inline styles
+    dialog.style.backgroundColor = '#ffffff';
+    dialog.style.color = '#333333';
+    dialog.style.border = '1px solid rgba(0, 0, 0, 0.1)';
+    dialog.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+
     dialog.innerHTML = `
-        <div class="notification-dialog-header">${title}</div>
-        <div class="notification-dialog-content">${message}</div>
+        <div class="notification-dialog-header" style="color: #333333; font-weight: 600;">${title}</div>
+        <div class="notification-dialog-content" style="color: #555555;">${message}</div>
         <div class="notification-dialog-footer">
-            <button class="notification-dialog-button">${buttonText}</button>
+            <button class="notification-dialog-button" style="background-color: #4285f4; color: white;">${buttonText}</button>
         </div>
     `;
     document.body.appendChild(dialog);
@@ -1575,6 +1820,15 @@ function showNotificationDialog(title, message, buttonText = 'OK') {
         document.body.removeChild(dialog);
     });
 
+    // Add hover effect to button
+    button.addEventListener('mouseover', () => {
+        button.style.backgroundColor = '#3367d6';
+    });
+
+    button.addEventListener('mouseout', () => {
+        button.style.backgroundColor = '#4285f4';
+    });
+
     // Add event listener to overlay
     overlay.addEventListener('click', () => {
         document.body.removeChild(overlay);
@@ -1583,14 +1837,46 @@ function showNotificationDialog(title, message, buttonText = 'OK') {
 }
 
 // Show toast notification that auto-dismisses after 3 seconds
-function showToastNotification(title, message) {
+function showToastNotification(title, message, isError = false) {
+    console.log(`Toast notification: ${title} - ${message} - isError: ${isError}`);
+
     // Create toast element
     const toast = document.createElement('div');
     toast.className = 'simple-toast';
+
+    // Add appropriate class based on message type
+    if (isError) {
+        toast.classList.add('error'); // Red for error
+    } else {
+        toast.classList.add('success'); // Green for success
+    }
+
+    // Format the message in a more elegant way
+    let formattedMessage;
+
+    if (isError) {
+        // For error messages, simplify by showing just the message without the title
+        formattedMessage = message;
+    } else {
+        // For success messages, show a simple message
+        formattedMessage = message;
+    }
+
+    // Add appropriate icon based on message type
+    const icon = isError ?
+        '<i class="fas fa-exclamation-circle" style="margin-right: 10px; font-size: 16px;"></i>' :
+        '<i class="fas fa-check-circle" style="margin-right: 10px; font-size: 16px;"></i>';
+
     toast.innerHTML = `
-        ${message}
+        <div style="display: flex; align-items: center; justify-content: center; flex: 1;">
+            ${icon}${formattedMessage}
+        </div>
         <button class="toast-close-btn">&times;</button>
     `;
+
+    // Use CSS classes for positioning instead of inline styles
+    // This will ensure it uses the styles from notifications.css
+    toast.style.zIndex = '9999';
 
     // Add to body
     document.body.appendChild(toast);
@@ -1598,7 +1884,12 @@ function showToastNotification(title, message) {
     // Add close button functionality
     const closeBtn = toast.querySelector('.toast-close-btn');
     closeBtn.addEventListener('click', () => {
-        document.body.removeChild(toast);
+        toast.classList.remove('show');
+        setTimeout(() => {
+            if (document.body.contains(toast)) {
+                document.body.removeChild(toast);
+            }
+        }, 300);
     });
 
     // Animate in
@@ -1606,17 +1897,19 @@ function showToastNotification(title, message) {
         toast.classList.add('show');
     }, 10);
 
-    // Auto-dismiss after 3 seconds
+    // Auto-dismiss after 5 seconds (increased from 3 for better visibility)
     setTimeout(() => {
-        toast.classList.remove('show');
+        if (document.body.contains(toast)) {
+            toast.classList.remove('show');
 
-        // Remove from DOM after animation completes
-        setTimeout(() => {
-            if (document.body.contains(toast)) {
-                document.body.removeChild(toast);
-            }
-        }, 300); // Animation duration
-    }, 3000);
+            // Remove from DOM after animation completes
+            setTimeout(() => {
+                if (document.body.contains(toast)) {
+                    document.body.removeChild(toast);
+                }
+            }, 300); // Animation duration
+        }
+    }, 5000);
 }
 
 // Show confirmation dialog with custom buttons
@@ -1628,13 +1921,20 @@ function showConfirmationDialog(title, message, confirmText, cancelText, onConfi
 
     // Create dialog
     const dialog = document.createElement('div');
-    dialog.className = 'notification-dialog';
+    dialog.className = 'notification-dialog light-theme-notification';
+
+    // Force light theme styling with inline styles
+    dialog.style.backgroundColor = '#ffffff';
+    dialog.style.color = '#333333';
+    dialog.style.border = '1px solid rgba(0, 0, 0, 0.1)';
+    dialog.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+
     dialog.innerHTML = `
-        <div class="notification-dialog-header">${title}</div>
-        <div class="notification-dialog-content">${message}</div>
+        <div class="notification-dialog-header" style="color: #333333; font-weight: 600;">${title}</div>
+        <div class="notification-dialog-content" style="color: #555555;">${message}</div>
         <div class="notification-dialog-footer">
-            <button class="notification-dialog-button cancel-button">${cancelText}</button>
-            <button class="notification-dialog-button confirm-button">${confirmText}</button>
+            <button class="notification-dialog-button cancel-button" style="background-color: #f1f3f4; color: #333333; border: 1px solid #dadce0;">${cancelText}</button>
+            <button class="notification-dialog-button confirm-button" style="background-color: #4285f4; color: white;">${confirmText}</button>
         </div>
     `;
     document.body.appendChild(dialog);
@@ -1654,11 +1954,37 @@ function showConfirmationDialog(title, message, confirmText, cancelText, onConfi
         }
     });
 
+    // Add hover effects to buttons
+    confirmButton.addEventListener('mouseover', () => {
+        if (confirmText.toLowerCase().includes('delete')) {
+            confirmButton.style.backgroundColor = '#d32f2f';
+        } else {
+            confirmButton.style.backgroundColor = '#3367d6';
+        }
+    });
+
+    confirmButton.addEventListener('mouseout', () => {
+        if (confirmText.toLowerCase().includes('delete')) {
+            confirmButton.style.backgroundColor = '#e53935';
+        } else {
+            confirmButton.style.backgroundColor = '#4285f4';
+        }
+    });
+
     // Add event listener to cancel button
     const cancelButton = dialog.querySelector('.cancel-button');
     cancelButton.addEventListener('click', () => {
         document.body.removeChild(overlay);
         document.body.removeChild(dialog);
+    });
+
+    // Add hover effects to cancel button
+    cancelButton.addEventListener('mouseover', () => {
+        cancelButton.style.backgroundColor = '#e8eaed';
+    });
+
+    cancelButton.addEventListener('mouseout', () => {
+        cancelButton.style.backgroundColor = '#f1f3f4';
     });
 
     // Cancel when clicking overlay
@@ -1708,10 +2034,8 @@ function setupLoginFunctionality() {
         // Check if user is already logged in
         updateUserAccountUI();
 
-        // Open login modal when user account button is clicked (if not logged in)
-        if (!localStorage.getItem('user_data')) {
-            userAccountBtn.addEventListener('click', openLoginModal);
-        }
+        // We don't need to add a click handler here anymore
+        // The user-account.js file handles this functionality
 
         // Close login modal
         closeLoginModal.addEventListener('click', () => {
@@ -1732,18 +2056,21 @@ function setupLoginFunctionality() {
             const password = passwordInput.value.trim();
 
             if (!username || !password) {
-                loginMessage.textContent = 'Please enter both email and password.';
+                // Show error message as a toast notification with simplified format
+                showToastNotification('', 'Please enter both email and password.', true);
                 return;
             }
 
             // Validate email format
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!emailRegex.test(username)) {
-                loginMessage.textContent = 'Please enter a valid email address.';
+                // Show error message as a toast notification with simplified format
+                showToastNotification('', 'Please enter a valid email address.', true);
                 return;
             }
 
             // Show loading message
+            loginMessage.style.display = 'block';
             loginMessage.textContent = 'Logging in...';
 
             try {
@@ -1766,21 +2093,57 @@ function setupLoginFunctionality() {
                     localStorage.setItem('auth_token', data.token);
                     localStorage.setItem('user_data', JSON.stringify(data.user));
 
+                    // Hide the in-form message
+                    loginMessage.style.display = 'none';
+
                     // Close modal
                     loginModal.style.display = 'none';
 
-                    // Show success notification
-                    showToastNotification('Login Successful', 'You have been logged in successfully.');
+                    // Show success notification with simplified format
+                    showToastNotification('', 'Login successful');
 
                     // Update UI to show logged in state
-                    updateUserAccountUI(data.user);
+                    if (typeof updateUserAccountUI === 'function') {
+                        updateUserAccountUI(data.user);
+                    } else if (typeof window.updateUserAccountUI === 'function') {
+                        window.updateUserAccountUI(data.user);
+                    } else {
+                        console.error('updateUserAccountUI function not found');
+                        // Reload the page to ensure the UI is updated correctly
+                        window.location.reload();
+                    }
+
+                    // Check if there was a pre-login suggestion and use it
+                    const preSuggestion = localStorage.getItem('pre_login_suggestion');
+                    if (preSuggestion) {
+                        // Clear the suggestion from localStorage
+                        localStorage.removeItem('pre_login_suggestion');
+
+                        // Wait a moment for the UI to update
+                        setTimeout(() => {
+                            // Submit the suggestion
+                            if (typeof submitSuggestion === 'function') {
+                                submitSuggestion(preSuggestion);
+                            }
+                        }, 1000);
+                    }
                 } else {
-                    // Show error message
-                    loginMessage.textContent = data.message || 'Login failed. Please try again.';
+                    // Show error message as a toast notification with simplified format
+                    const errorMessage = data.message || 'Login failed. Please try again.';
+                    showToastNotification('', errorMessage, true);
+
+                    // Hide the in-form message
+                    loginMessage.style.display = 'none';
+                    loginMessage.textContent = '';
                 }
             } catch (error) {
                 console.error('Error logging in:', error);
-                loginMessage.textContent = 'An error occurred. Please try again.';
+                // Show error message as a toast notification with simplified format
+                showToastNotification('', 'An error occurred. Please try again.', true);
+
+                // Hide the in-form message
+                loginMessage.style.display = 'none';
+                loginMessage.textContent = '';
             }
         });
 
@@ -1795,9 +2158,33 @@ function setupLoginFunctionality() {
             });
         }
 
+        // Also handle the hidden register link
+        const registerLinkHidden = document.getElementById('registerLinkHidden');
+        if (registerLinkHidden) {
+            registerLinkHidden.addEventListener('click', (e) => {
+                e.preventDefault();
+                loginModal.style.display = 'none';
+                registerModal.style.display = 'flex';
+                fullNameInput.focus();
+                registerMessage.textContent = '';
+            });
+        }
+
         // Switch to login modal
         if (loginLink) {
             loginLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                registerModal.style.display = 'none';
+                loginModal.style.display = 'flex';
+                usernameInput.focus();
+                loginMessage.textContent = '';
+            });
+        }
+
+        // Also handle the hidden login link
+        const loginLinkHidden = document.getElementById('loginLinkHidden');
+        if (loginLinkHidden) {
+            loginLinkHidden.addEventListener('click', (e) => {
                 e.preventDefault();
                 registerModal.style.display = 'none';
                 loginModal.style.display = 'flex';
@@ -1822,18 +2209,21 @@ function setupLoginFunctionality() {
                 const companyName = companyNameInput.value.trim();
 
                 if (!fullName || !email || !password || !companyName) {
-                    registerMessage.textContent = 'Please fill in all fields.';
+                    // Show error message as a toast notification with simplified format
+                    showToastNotification('', 'Please fill in all fields.', true);
                     return;
                 }
 
                 // Validate email format
                 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                 if (!emailRegex.test(email)) {
-                    registerMessage.textContent = 'Please enter a valid email address.';
+                    // Show error message as a toast notification with simplified format
+                    showToastNotification('', 'Please enter a valid email address.', true);
                     return;
                 }
 
                 // Show loading message
+                registerMessage.style.display = 'block';
                 registerMessage.textContent = 'Creating account...';
 
                 try {
@@ -1854,24 +2244,40 @@ function setupLoginFunctionality() {
                     const data = await response.json();
 
                     if (data.success) {
+                        // Hide the in-form message
+                        registerMessage.style.display = 'none';
+
                         // Close modal
                         registerModal.style.display = 'none';
 
-                        // Show success notification
-                        showToastNotification('Registration Successful', 'Your account has been created successfully. You can now log in.');
+                        // Show success notification with simplified format
+                        showToastNotification('', 'Account created successfully');
 
                         // Open login modal
                         loginModal.style.display = 'flex';
                         usernameInput.value = email;
                         passwordInput.value = '';
+
+                        // Show login message
+                        loginMessage.style.display = 'block';
                         loginMessage.textContent = 'Please log in with your new account.';
                     } else {
-                        // Show error message
-                        registerMessage.textContent = data.message || 'Registration failed. Please try again.';
+                        // Show error message as a toast notification with simplified format
+                        const errorMessage = data.message || 'Registration failed. Please try again.';
+                        showToastNotification('', errorMessage, true);
+
+                        // Hide the in-form message
+                        registerMessage.style.display = 'none';
+                        registerMessage.textContent = '';
                     }
                 } catch (error) {
                     console.error('Error registering:', error);
-                    registerMessage.textContent = 'An error occurred. Please try again.';
+                    // Show error message as a toast notification with simplified format
+                    showToastNotification('', 'An error occurred. Please try again.', true);
+
+                    // Hide the in-form message
+                    registerMessage.style.display = 'none';
+                    registerMessage.textContent = '';
                 }
             });
         }
@@ -1899,10 +2305,20 @@ function setupNewChatButton() {
         newButton.id = 'newChatBtn';
         newButton.className = 'sidebar-action-btn';
         newButton.title = 'New Chat';
-        newButton.innerHTML = '<i class="fas fa-plus"></i>';
+        // Use the appropriate icon based on the current theme
+        // In dark mode, use white circle with black plus (new-chat-icon-dark-larger.svg)
+        // In light mode, use black circle with white plus (new-chat-icon-larger.svg)
+        const isDarkMode = document.body.classList.contains('theme-dark');
+        const iconPath = isDarkMode ? '/static/img/new-chat-icon-dark-larger.svg' : '/static/img/new-chat-icon-larger.svg';
+        newButton.innerHTML = `<img src="${iconPath}" alt="New Chat" class="new-chat-icon">`;
+        console.log('Sidebar new chat icon set for theme:', isDarkMode ? 'dark' : 'light');
 
         // Replace the old button with the new one
         newChatBtn.parentNode.replaceChild(newButton, newChatBtn);
+
+        // Add click event listener to the new button with a higher z-index
+        newButton.style.position = 'relative';
+        newButton.style.zIndex = '1050'; // Higher z-index to ensure it's clickable
 
         // Add click event listener to the new button
         newButton.addEventListener('click', function(event) {
@@ -1951,21 +2367,26 @@ function setupNewChatButton() {
             if (chatMessages) {
                 chatMessages.innerHTML = '';
 
-                // Add welcome message
-                chatMessages.innerHTML = `
-                    <div class="welcome-container">
-                        <div class="welcome-message">
-                            <h2>Welcome to HR Assistant</h2>
-                            <p>I can help you with questions about company policies, employee guidelines, and HR procedures.</p>
-                            <div class="suggestion-chips">
-                                <button class="suggestion-chip">Leave Policy</button>
-                                <button class="suggestion-chip">Referral Program</button>
-                                <button class="suggestion-chip">Dress Code</button>
-                                <button class="suggestion-chip">Work from Home</button>
+                // Check if user is logged in before adding welcome message
+                const isLoggedIn = !!localStorage.getItem('user_data');
+
+                if (!isLoggedIn) {
+                    // Only add welcome message if user is not logged in
+                    chatMessages.innerHTML = `
+                        <div class="welcome-container">
+                            <div class="welcome-message">
+                                <h2>Welcome to ZiaHR</h2>
+                                <p>I can help you with questions about company policies, employee guidelines, and HR procedures.</p>
+                                <div class="suggestion-chips">
+                                    <button class="suggestion-chip">Leave Policy</button>
+                                    <button class="suggestion-chip">Referral Program</button>
+                                    <button class="suggestion-chip">Dress Code</button>
+                                    <button class="suggestion-chip">Work from Home</button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `;
+                    `;
+                }
 
                 // Set up suggestion chips
                 const suggestionChips = document.querySelectorAll('.suggestion-chip');
@@ -2423,7 +2844,7 @@ function deleteConfirmedChat(chatId) {
         loadSavedChats();
 
         // Show success notification
-        showToastNotification('Chat Deleted', `"${chatTitle}" has been deleted successfully.`);
+        showToastNotification('', `"${chatTitle}" has been deleted successfully.`);
 
         console.log(`Chat with ID ${chatId} deleted successfully`);
     } catch (error) {
@@ -2782,17 +3203,27 @@ function loadSavedChats() {
         }
 
         // Group chats by date
-        const today = new Date();
+        const now = new Date();
+
+        // Get today's date (midnight)
+        const today = new Date(now);
         today.setHours(0, 0, 0, 0);
 
+        // Get yesterday's date (midnight)
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
 
+        // Get one week ago
         const oneWeekAgo = new Date(today);
         oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
+        // Get one month ago
         const oneMonthAgo = new Date(today);
         oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
+
+        console.log('Date boundaries for chat categorization (search):');
+        console.log('- Today starts at:', today.toISOString());
+        console.log('- Yesterday starts at:', yesterday.toISOString());
 
         let todayChats = [];
         let yesterdayChats = [];
@@ -2801,14 +3232,24 @@ function loadSavedChats() {
         let olderChats = [];
 
         savedChats.forEach(chat => {
+            // Parse the chat timestamp
             const chatDate = new Date(chat.timestamp || 0);
-            if (chatDate >= today) {
+
+            // Get the chat date at midnight for proper day comparison
+            const chatDateMidnight = new Date(chatDate);
+            chatDateMidnight.setHours(0, 0, 0, 0);
+
+            // Compare dates at midnight level for proper day categorization
+            if (chatDateMidnight.getTime() === today.getTime()) {
                 todayChats.push(chat);
-            } else if (chatDate >= yesterday) {
+            } else if (chatDateMidnight.getTime() === yesterday.getTime()) {
                 yesterdayChats.push(chat);
-            } else if (chatDate >= oneWeekAgo) {
+            } else if (chatDateMidnight > yesterday && chatDateMidnight < today) {
+                // This should never happen but just in case
+                todayChats.push(chat);
+            } else if (chatDateMidnight >= oneWeekAgo && chatDateMidnight < yesterday) {
                 previousWeekChats.push(chat);
-            } else if (chatDate >= oneMonthAgo) {
+            } else if (chatDateMidnight >= oneMonthAgo && chatDateMidnight < oneWeekAgo) {
                 previousMonthChats.push(chat);
             } else {
                 olderChats.push(chat);
@@ -3274,4 +3715,19 @@ function showShareDialog(chatTitle, shareLink) {
     });
 }
 
-
+// Add event listener for theme changes to update the new chat button icon
+document.addEventListener('themeChanged', function(e) {
+    // Update new chat button icon in sidebar
+    const newChatBtn = document.getElementById('newChatBtn');
+    if (newChatBtn) {
+        const icon = newChatBtn.querySelector('img.new-chat-icon');
+        if (icon) {
+            // In dark mode, use white circle with black plus (new-chat-icon-dark-larger.svg)
+            // In light mode, use black circle with white plus (new-chat-icon-larger.svg)
+            icon.src = e.detail.theme === 'dark'
+                ? '/static/img/new-chat-icon-dark-larger.svg'
+                : '/static/img/new-chat-icon-larger.svg';
+            console.log('Theme changed: Updated sidebar new chat icon for', e.detail.theme, 'mode');
+        }
+    }
+});

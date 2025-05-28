@@ -1,6 +1,18 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="not-logged-in">
 <head>
+    <!-- Immediate theme apply - must be first to prevent theme flicker -->
+    <script src="{{ url_for('static', filename='js/immediate-theme-apply.js') }}"></script>
+
+    <!-- Prevent login popup on page refresh - must be second -->
+    <script src="{{ url_for('static', filename='js/prevent-login-popup.js') }}"></script>
+
+    <!-- Hide welcome message for logged-in users - must be third -->
+    <script src="{{ url_for('static', filename='js/hide-welcome-for-logged-in.js') }}"></script>
+
+    <!-- Auth state handler script - must be fourth to prevent login page flash -->
+    <script src="{{ url_for('static', filename='js/auth-state-handler.js') }}"></script>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ZiaHR</title>
@@ -10,6 +22,13 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/message-files.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/input-attachments.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/notifications.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/simple-toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/header-brand.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/light-theme-dialogs.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pre-login-ui.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/login-modal-fix.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/search-modal-new.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/header-line-fix.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -18,22 +37,74 @@
     <!-- Mammoth.js for DOCX preview -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js"></script>
 </head>
-<body class="theme-light">
+<body class="theme-light not-logged-in">
+    <!-- Pre-login UI -->
+    <div class="pre-login-container">
+        <header class="pre-login-header">
+            <div class="pre-login-logo">
+                <i class="fas fa-comment-dots"></i>
+                <span>ZiaHR</span>
+            </div>
+            <div class="pre-login-actions">
+                <button class="login-btn" id="preLoginBtn">Log in</button>
+            </div>
+        </header>
+        <main class="pre-login-main">
+            <!-- Welcome message container -->
+            <div class="pre-login-welcome-container">
+                <div class="pre-login-welcome-message">
+                    <h2>👋 Welcome to ZiaHR</h2>
+                    <p>I can help you with questions about company policies, employee guidelines, and HR procedures.</p>
+                    <div class="pre-login-suggestion-chips">
+                        <button class="pre-login-suggestion-chip">🗓️ Leave Policy</button>
+                        <button class="pre-login-suggestion-chip">👥 Referral Program</button>
+                        <button class="pre-login-suggestion-chip">👔 Dress Code</button>
+                        <button class="pre-login-suggestion-chip">🏠 Work from Home</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input container at the bottom -->
+            <div class="pre-login-bottom-input-container">
+                <div class="pre-login-input-wrapper">
+                    <textarea class="pre-login-input" placeholder="💬 How can I help you today?" rows="1"></textarea>
+                    <div class="pre-login-input-actions">
+                        <div class="pre-login-action-buttons">
+                            <button class="pre-login-action-btn">
+                                <i class="fas fa-paperclip"></i>
+                            </button>
+                            <button class="pre-login-action-btn">
+                                <i class="fas fa-microphone"></i>
+                            </button>
+                        </div>
+                        <div class="pre-login-right-actions">
+                            <button class="pre-login-send-btn" title="Send message">
+                                <img src="{{ url_for('static', filename='img/send-icon.svg') }}" alt="Send" class="send-icon">
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Main app container (shown after login) -->
     <div class="app-container">
         <!-- Sidebar -->
         <div class="sidebar" id="sidebar">
             <!-- Sidebar toggle button inside sidebar -->
             <div class="sidebar-top-controls">
-                <button id="toggleSidebar" class="sidebar-toggle" style="display: flex; z-index: 1000;">
-                    <i class="fas fa-bars"></i>
+                <button id="toggleSidebar" class="sidebar-toggle">
+                    <i class="fas fa-bars" style="font-size: 18px;"></i>
                 </button>
-                <span class="sidebar-title">ZiaHR</span>
+                <span class="sidebar-title"></span>
                 <div class="sidebar-action-buttons">
                     <button id="newChatBtn" class="sidebar-action-btn" title="New Chat">
-                        <i class="fas fa-plus"></i>
+                        <!-- The correct SVG will be set by JavaScript based on theme -->
+                        <img src="{{ url_for('static', filename='img/new-chat-icon-larger.svg') }}" alt="New Chat" class="new-chat-icon">
                     </button>
                     <button id="sidebarSearchBtn" class="sidebar-action-btn" title="Search">
-                        <i class="fas fa-search"></i>
+                        <i class="fas fa-search" style="font-size: 18px;"></i>
                     </button>
                 </div>
             </div>
@@ -61,14 +132,22 @@
         <main class="chat-container">
             <header class="chat-header">
                 <div class="header-content">
-                    <div class="header-actions">
-                        <!-- Dark mode toggle in header -->
-                        <div class="header-theme-toggle">
-                            <label class="switch">
-                                <input type="checkbox" id="headerThemeToggle">
-                                <span class="slider round"></span>
-                            </label>
+                    <!-- Left section with new chat and brand -->
+                    <div class="header-left">
+                        <!-- New chat button (only visible when sidebar is collapsed) -->
+                        <button id="headerNewChatBtn" class="header-new-chat-btn" title="New chat">
+                            <!-- The correct SVG will be set by JavaScript based on theme -->
+                            <img src="{{ url_for('static', filename='img/new-chat-icon-larger.svg') }}" alt="New Chat" class="new-chat-icon">
+                        </button>
+
+                        <!-- ZiaHR branding -->
+                        <div class="header-brand">
+                            <h1 class="brand-name">ZiaHR</h1>
                         </div>
+                    </div>
+
+                    <div class="header-actions">
+                        <!-- Dark mode toggle removed - only available in settings -->
                         <!-- User account button -->
                         <div class="user-account-dropdown">
                             <button id="userAccountBtn" class="header-action-btn login-icon" title="Account">
@@ -80,26 +159,30 @@
             </header>
 
             <div class="chat-messages" id="chatMessages">
-                <div class="welcome-container">
+                <!-- Dynamic greeting message - positioned in the middle of the page -->
+                <div class="greeting-message-container" id="greetingMessageContainer" style="display: none;">
+                    <p class="greeting-message" id="greetingMessage"></p>
+                </div>
+                <!-- Welcome container - only shown for non-logged-in users -->
+                <div class="welcome-container not-logged-in-only">
                     <div class="welcome-message">
-                        <h2>Welcome to ZiaHR</h2>
+                        <h2>👋 Welcome</h2>
                         <p>I can help you with questions about company policies, employee guidelines, and HR procedures.</p>
                         <div class="suggestion-chips">
-                            <button class="suggestion-chip" onclick="submitSuggestion('What is the company\'s leave policy?')">Leave Policy</button>
-                            <button class="suggestion-chip" onclick="submitSuggestion('How does the employee referral program work?')">Referral Program</button>
-                            <button class="suggestion-chip" onclick="submitSuggestion('What is the dress code policy?')">Dress Code</button>
-                            <button class="suggestion-chip" onclick="submitSuggestion('Tell me about the work from home policy')">Work from Home</button>
+                            <button class="suggestion-chip" onclick="submitSuggestion('What is the company\'s leave policy?')">🗓️ Leave Policy</button>
+                            <button class="suggestion-chip" onclick="submitSuggestion('How does the employee referral program work?')">👥 Referral Program</button>
+                            <button class="suggestion-chip" onclick="submitSuggestion('What is the dress code policy?')">👔 Dress Code</button>
+                            <button class="suggestion-chip" onclick="submitSuggestion('Tell me about the work from home policy')">🏠 Work from Home</button>
                         </div>
                     </div>
                 </div>
-
             </div>
 
             <footer class="chat-input-container">
                 <form id="chatForm" class="chat-input-form">
                     <!-- Main input area -->
                     <div class="input-main-area">
-                        <textarea id="userInput" placeholder="How can I help you today?" rows="1" autocomplete="off"></textarea>
+                        <textarea id="userInput" placeholder="💬 How can I help you today?" rows="1" autocomplete="off"></textarea>
                     </div>
 
                     <!-- Action buttons row -->
@@ -115,7 +198,8 @@
                         </div>
                         <div class="right-actions">
                             <button type="submit" id="sendBtn" class="send-btn" title="Send message" disabled>
-                                <i class="fas fa-arrow-up"></i>
+                                <img src="{{ url_for('static', filename='img/send-icon.svg') }}" alt="Send" class="send-icon">
+                                <img src="{{ url_for('static', filename='img/loading-icon.svg') }}" alt="Loading" class="loading-icon">
                             </button>
                         </div>
                     </div>
@@ -169,10 +253,10 @@
                     <p id="recordingStatus">Listening...</p>
                 </div>
                 <div class="recording-controls">
-                    <button id="startRecording" class="record-btn">
-                        <i class="fas fa-microphone"></i> Start
+                    <button id="startRecording" class="record-btn record-start-btn">
+                        <img src="{{ url_for('static', filename='img/mic-icon-new.svg') }}" alt="Microphone" class="record-btn-icon"> Start
                     </button>
-                    <button id="stopRecording" class="record-btn" disabled>
+                    <button id="stopRecording" class="record-btn record-stop-btn" disabled>
                         <i class="fas fa-stop"></i> Stop
                     </button>
                 </div>
@@ -232,11 +316,13 @@
                     <div class="form-group forgot-password-container">
                         <a href="#" class="forgot-password" id="forgotPassword">Forgot password?</a>
                     </div>
-                    <div id="loginMessage" class="login-message"></div>
+                    <div id="loginMessage" class="login-message" style="display: none;"></div>
                     <button id="submitLogin" class="btn btn-primary btn-block">Sign In</button>
-                    <div class="register-link-container">
-                        <span>Don't have an account?</span>
-                        <a href="#" id="registerLink">Register</a>
+                    <div class="login-actions-container">
+                        <button id="registerLink" class="btn btn-text">Create Account</button>
+                    </div>
+                    <div class="register-link-container" style="display: none;">
+                        <a href="#" id="registerLinkHidden">Register</a>
                     </div>
                 </div>
             </div>
@@ -275,11 +361,13 @@
                         <label for="companyName">Company Name</label>
                         <input type="text" id="companyName" class="form-control" placeholder="Enter your company name">
                     </div>
-                    <div id="registerMessage" class="login-message"></div>
+                    <div id="registerMessage" class="login-message" style="display: none;"></div>
                     <button id="submitRegister" class="btn btn-primary btn-block">Create Account</button>
-                    <div class="register-link-container">
-                        <span>Already have an account?</span>
-                        <a href="#" id="loginLink">Log In</a>
+                    <div class="login-actions-container">
+                        <button id="loginLink" class="btn btn-text">Sign In Instead</button>
+                    </div>
+                    <div class="register-link-container" style="display: none;">
+                        <a href="#" id="loginLinkHidden">Log In</a>
                     </div>
                 </div>
             </div>
@@ -288,7 +376,7 @@
 
     <!-- Settings Modal -->
     <div class="modal" id="settingsModal">
-        <div class="modal-content modal-lg">
+        <div class="modal-content">
             <div class="modal-header">
                 <h3>Settings</h3>
                 <button id="closeSettingsModal" class="icon-button">
@@ -296,40 +384,99 @@
                 </button>
             </div>
             <div class="modal-body">
-                <div class="settings-tabs">
-                    <div class="settings-tab active" data-tab="general">General</div>
-                    <div class="settings-tab" data-tab="archived-chats">Archived Chats</div>
-                </div>
-                <div class="settings-content">
-                    <!-- General Settings Tab -->
-                    <div class="settings-panel active" id="general-panel">
-                        <div class="settings-section">
-                            <h4>Appearance</h4>
-                            <div class="settings-option">
-                                <label for="settingsThemeToggle">Dark Mode</label>
-                                <div class="theme-toggle">
-                                    <label class="switch">
-                                        <input type="checkbox" id="settingsThemeToggle">
-                                        <span class="slider round"></span>
-                                    </label>
+                <div class="settings-layout">
+                    <div class="settings-sidebar">
+                        <div class="settings-nav-item active" data-tab="general">
+                            <i class="fas fa-cog"></i> General
+                        </div>
+                        <div class="settings-nav-item" data-tab="security">
+                            <i class="fas fa-shield-alt"></i> Security
+                        </div>
+                    </div>
+                    <div class="settings-content">
+                        <!-- General Settings Tab -->
+                        <div class="settings-panel active" id="general-panel">
+                            <div class="settings-item">
+                                <div class="settings-item-left">Theme</div>
+                                <div class="settings-item-right">
+                                    <select id="themeSelect" class="dropdown-select">
+                                        <option value="system">System</option>
+                                        <option value="light">Light</option>
+                                        <option value="dark">Dark</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="settings-item">
+                                <div class="settings-item-left">Language</div>
+                                <div class="settings-item-right">
+                                    <select id="languageSelect" class="dropdown-select">
+                                        <option value="auto-detect">Auto-detect</option>
+                                        <option value="en">English</option>
+                                        <option value="es">Spanish</option>
+                                        <option value="fr">French</option>
+                                        <option value="de">German</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="settings-item">
+                                <div class="settings-item-left">Archived chats</div>
+                                <div class="settings-item-right">
+                                    <button id="manageArchivedChats" class="settings-button">Manage</button>
+                                </div>
+                            </div>
+
+                            <div class="settings-item">
+                                <div class="settings-item-left">Archive all chats</div>
+                                <div class="settings-item-right">
+                                    <button id="archiveAllChats" class="settings-button">Archive all</button>
+                                </div>
+                            </div>
+
+                            <div class="settings-item">
+                                <div class="settings-item-left">Delete all chats</div>
+                                <div class="settings-item-right">
+                                    <button id="deleteAllChats" class="settings-button danger">Delete all</button>
+                                </div>
+                            </div>
+
+                            <div class="settings-item">
+                                <div class="settings-item-left">Log out on this device</div>
+                                <div class="settings-item-right">
+                                    <button id="logoutDevice" class="settings-button logout-button">Log out</button>
                                 </div>
                             </div>
                         </div>
-                        <div class="settings-section">
-                            <h4>Voice</h4>
-                            <div class="settings-option">
-                                <label for="settingsVoiceToggle">Text-to-Speech</label>
-                                <div class="voice-toggle">
-                                    <label class="switch">
-                                        <input type="checkbox" id="settingsVoiceToggle">
-                                        <span class="slider round"></span>
-                                    </label>
+
+                        <!-- Security Settings Tab -->
+                        <div class="settings-panel" id="security-panel">
+                            <div class="settings-item">
+                                <div class="settings-item-left">Multi-factor authentication</div>
+                                <div class="settings-item-right">
+                                    <button id="enableMFA" class="settings-button">Enable</button>
                                 </div>
+                            </div>
+                            <div class="settings-description">
+                                <p>Require an extra security challenge when logging in. If you are unable to pass this challenge, you will have the option to recover your account via email.</p>
+                            </div>
+
+                            <div class="settings-item">
+                                <div class="settings-item-left">Log out of all devices</div>
+                                <div class="settings-item-right">
+                                    <button id="logoutAllDevices" class="settings-button">Log out all</button>
+                                </div>
+                            </div>
+                            <div class="settings-description">
+                                <p>Log out of all active sessions across all devices, including your current session. It may take up to 30 minutes for other devices to be logged out.</p>
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Archived Chats Tab -->
+
+
+                    <!-- Archived Chats Tab (Hidden but kept for functionality) -->
                     <div class="settings-panel" id="archived-chats-panel">
                         <div class="settings-section">
                             <h4>Archived Conversations</h4>
@@ -340,15 +487,36 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button id="closeSettings" class="btn btn-secondary">Close</button>
-                <button id="saveSettings" class="btn btn-primary">Save Changes</button>
-            </div>
+            <!-- Modal footer removed as requested -->
         </div>
     </div>
 
     <!-- Analytics Dashboard Modal removed -->
 
+    <!-- Archived Chats Modal -->
+    <div class="modal" id="archivedChatsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Archived Chats</h3>
+                <button id="closeArchivedChatsModal" class="icon-button">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="archived-chats-list" id="archivedChatsList">
+                    <!-- Archived chats will be loaded here -->
+                    <div class="loading-spinner">Loading archived chats...</div>
+                </div>
+                <div class="no-archived-chats-message" style="display: none;">
+                    <p>You don't have any archived chats yet.</p>
+                    <p>When you archive a chat, it will appear here.</p>
+                </div>
+            </div>
+            <!-- Modal footer removed as requested -->
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/toast-notifications.js') }}"></script>
     <script src="{{ url_for('static', filename='js/chatgpt-ui-clean.js') }}"></script>
     <script src="{{ url_for('static', filename='js/speech-recognition.js') }}"></script>
     <script src="{{ url_for('static', filename='js/file-manager.js') }}"></script>
@@ -356,8 +524,19 @@
     <script src="{{ url_for('static', filename='js/app-integration.js') }}"></script>
     <script src="{{ url_for('static', filename='js/settings-manager.js') }}"></script>
     <script src="{{ url_for('static', filename='js/hide-slider-homepage.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/pre-login-ui.js') }}"></script>
 
     <script src="{{ url_for('static', filename='js/remove-debug.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/send-button-icons.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/remove-welcome-after-login.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dynamic-greeting.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/archived-chats-modal.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/duplicate-elements-check.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/new-chat-handler.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/search-modal-fix.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/header-line-fix.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/header-controls.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/init-new-chat-icons.js') }}"></script>
 
 </body>
 </html>

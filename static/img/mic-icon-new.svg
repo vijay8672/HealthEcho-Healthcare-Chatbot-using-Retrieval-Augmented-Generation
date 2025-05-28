@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white">
+  <g transform="translate(12, 12)">
+    <path d="M0,-7 C1.66,-7 3,-5.66 3,-4 L3,0 C3,1.66 1.66,3 0,3 C-1.66,3 -3,1.66 -3,0 L-3,-4 C-3,-5.66 -1.66,-7 0,-7 Z"/>
+    <path d="M-5,0 L-5,1 C-5,3.76 -2.76,6 0,6 C2.76,6 5,3.76 5,1 L5,0" stroke="white" stroke-width="2" fill="none"/>
+    <line x1="0" y1="6" x2="0" y2="9" stroke="white" stroke-width="2"/>
+  </g>
+</svg>

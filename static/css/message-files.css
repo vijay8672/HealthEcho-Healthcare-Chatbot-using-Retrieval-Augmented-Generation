@@ -1,4 +1,12 @@
 /* Message Files Styles - ChatGPT Style */
+/* Apply consistent font family */
+.message-files,
+.file-items,
+.message-file-item,
+.message-file-item .file-name,
+.message-file-item .file-type {
+    font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
+}
 .message-files {
     margin-top: 5px;
     margin-bottom: 5px;
@@ -64,8 +72,8 @@
 }
 
 .message-file-item .file-name {
-    font-size: 12px;
-    font-weight: 500;
+    font-size: 0.75rem;
+    font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -74,7 +82,8 @@
 }
 
 .message-file-item .file-type {
-    font-size: 10px;
+    font-size: 0.625rem;
     color: var(--text-secondary);
     text-transform: uppercase;
+    font-weight: 400;
 }

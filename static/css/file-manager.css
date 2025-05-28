@@ -1,4 +1,15 @@
 /* File Manager Styles */
+/* Apply consistent font family */
+.file-list-container,
+.file-item,
+.file-name,
+.file-type,
+.file-preview-title,
+.page-number,
+.more-pages,
+.preview-error {
+    font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
+}
 .file-list-container {
     display: none; /* Hide by default */
     flex-wrap: wrap;
@@ -54,8 +65,8 @@
 }
 
 .file-name {
-    font-size: 12px;
-    font-weight: 500;
+    font-size: 0.75rem;
+    font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -63,8 +74,9 @@
 }
 
 .file-type {
-    font-size: 10px;
+    font-size: 0.625rem;
     color: var(--text-secondary);
+    font-weight: 400;
 }
 
 .file-actions {
@@ -79,8 +91,9 @@
     cursor: pointer;
     padding: 2px;
     border-radius: 4px;
-    font-size: 12px;
+    font-size: 0.75rem;
     transition: color 0.2s;
+    font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
 }
 
 .file-preview:hover {
@@ -99,7 +112,8 @@
 .file-item.uploading .file-name::after {
     content: " (uploading...)";
     color: var(--accent-color);
-    font-size: 10px;
+    font-size: 0.625rem;
+    font-weight: 400;
 }
 
 .file-item.success {
@@ -113,7 +127,8 @@
 .file-item.error .file-name::after {
     content: " (error)";
     color: var(--error-color);
-    font-size: 10px;
+    font-size: 0.625rem;
+    font-weight: 400;
 }
 
 .file-item.locked {
@@ -140,7 +155,7 @@
 }
 
 .file-preview-content {
-    background-color: var(--bg-primary);
+    background-color: var(--bg-primary); /* Alabaster White background */
     border-radius: 8px;
     width: 90%;
     max-width: 800px;
@@ -160,8 +175,8 @@
 }
 
 .file-preview-title {
-    font-size: 16px;
-    font-weight: 600;
+    font-size: 1rem;
+    font-weight: 700;
     color: var(--text-primary);
 }
 
@@ -194,33 +209,39 @@
 }
 
 .page-number {
-    font-size: 12px;
+    font-size: 0.75rem;
     color: var(--text-secondary);
     margin-bottom: 4px;
+    font-weight: 400;
 }
 
 .more-pages {
-    font-size: 14px;
+    font-size: 0.875rem;
     color: var(--text-secondary);
     margin-top: 16px;
     text-align: center;
+    font-weight: 400;
 }
 
 .docx-preview {
     padding: 16px;
-    background-color: white;
+    background-color: var(--bg-primary);
     border-radius: 4px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    color: #333;
+    color: var(--text-primary);
+    font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
+    font-weight: 400;
+    line-height: 1.5;
 }
 
 .txt-preview {
     white-space: pre-wrap;
-    font-family: monospace;
+    font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
     padding: 16px;
     background-color: var(--bg-secondary);
     border-radius: 4px;
     color: var(--text-primary);
+    font-size: 0.875rem;
 }
 
 .preview-loading {
@@ -229,6 +250,8 @@
     justify-content: center;
     padding: 32px;
     color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 400;
 }
 
 .preview-loading i {
@@ -240,6 +263,8 @@
     padding: 32px;
     text-align: center;
     color: var(--error-color);
+    font-size: 0.875rem;
+    font-weight: 400;
 }
 
 @keyframes spin {

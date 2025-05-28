@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Re-attach event listeners to make sure they work
     const startRecording = document.getElementById('startRecording');
     const stopRecording = document.getElementById('stopRecording');
+    const voiceInputBtn = document.getElementById('voiceInputBtn');
 
     if (startRecording) {
         startRecording.addEventListener('click', function() {
@@ -20,6 +21,14 @@ document.addEventListener('DOMContentLoaded', function() {
         stopRecording.addEventListener('click', function() {
             console.log('Stop recording clicked');
             stopVoiceRecording();
+        });
+    }
+
+    // Keep the existing voice input button functionality
+    if (voiceInputBtn) {
+        voiceInputBtn.addEventListener('click', function() {
+            console.log('Voice input button clicked');
+            openVoiceModal();
         });
     }
 });
@@ -37,8 +46,14 @@ function startVoiceRecording() {
         transcriptionResult.textContent = '';
     }
 
-    if (startRecording) startRecording.disabled = true;
-    if (stopRecording) stopRecording.disabled = false;
+    if (startRecording) {
+        startRecording.disabled = true;
+        startRecording.classList.add('active'); // Add active class
+    }
+    if (stopRecording) {
+        stopRecording.disabled = false;
+        stopRecording.classList.remove('active'); // Remove active class from stop button
+    }
     if (recordingStatus) recordingStatus.textContent = 'Recording...';
     if (submitVoiceInput) submitVoiceInput.disabled = true;
 
@@ -108,8 +123,14 @@ function startVoiceRecording() {
         recognition.onerror = function(event) {
             console.error('Speech recognition error:', event.error);
             if (recordingStatus) recordingStatus.textContent = 'Error: ' + event.error;
-            if (startRecording) startRecording.disabled = false;
-            if (stopRecording) stopRecording.disabled = true;
+            if (startRecording) {
+                startRecording.disabled = false;
+                startRecording.classList.remove('active'); // Remove active class
+            }
+            if (stopRecording) {
+                stopRecording.disabled = true;
+                stopRecording.classList.remove('active'); // Remove active class
+            }
         };
 
         recognition.onend = function() {
@@ -132,8 +153,14 @@ function startVoiceRecording() {
             // If we reach here, it means we're not restarting the recognition
             // Update the UI to show recording has stopped
             const startRecording = document.getElementById('startRecording');
-            if (startRecording) startRecording.disabled = false;
-            if (stopRecording) stopRecording.disabled = true;
+            if (startRecording) {
+                startRecording.disabled = false;
+                startRecording.classList.remove('active'); // Remove active class
+            }
+            if (stopRecording) {
+                stopRecording.disabled = true;
+                stopRecording.classList.add('active'); // Add active class
+            }
             if (recordingStatus) recordingStatus.textContent = 'Recording stopped';
 
             // Remove recording-active class from the recording indicator
@@ -157,14 +184,26 @@ function startVoiceRecording() {
         } catch (error) {
             console.error('Error starting speech recognition:', error);
             if (recordingStatus) recordingStatus.textContent = 'Error starting recognition: ' + error.message;
-            if (startRecording) startRecording.disabled = false;
-            if (stopRecording) stopRecording.disabled = true;
+            if (startRecording) {
+                startRecording.disabled = false;
+                startRecording.classList.remove('active'); // Remove active class
+            }
+            if (stopRecording) {
+                stopRecording.disabled = true;
+                stopRecording.classList.remove('active'); // Remove active class
+            }
         }
     } else {
         console.warn('Speech recognition not supported in this browser');
         if (recordingStatus) recordingStatus.textContent = 'Speech recognition not supported in this browser';
-        if (startRecording) startRecording.disabled = false;
-        if (stopRecording) stopRecording.disabled = true;
+        if (startRecording) {
+            startRecording.disabled = false;
+            startRecording.classList.remove('active'); // Remove active class
+        }
+        if (stopRecording) {
+            stopRecording.disabled = true;
+            stopRecording.classList.remove('active'); // Remove active class
+        }
     }
 }
 
@@ -185,8 +224,14 @@ function stopVoiceRecording() {
         }
     }
 
-    if (startRecording) startRecording.disabled = false;
-    if (stopRecording) stopRecording.disabled = true;
+    if (startRecording) {
+        startRecording.disabled = false;
+        startRecording.classList.remove('active'); // Remove active class
+    }
+    if (stopRecording) {
+        stopRecording.disabled = true;
+        stopRecording.classList.add('active'); // Add active class to stop button
+    }
     if (recordingStatus) recordingStatus.textContent = 'Recording stopped';
 
     // Remove recording-active class from the recording indicator
@@ -198,5 +243,79 @@ function stopVoiceRecording() {
     // Enable submit button if we have text
     if (submitVoiceInput && transcriptionResult && transcriptionResult.textContent.trim()) {
         submitVoiceInput.disabled = false;
+    }
+}
+
+// Function to open the voice modal
+function openVoiceModal() {
+    console.log('Opening voice modal...');
+    const voiceModal = document.getElementById('voiceModal');
+    const transcriptionResult = document.getElementById('transcriptionResult');
+    const submitVoiceInput = document.getElementById('submitVoiceInput');
+
+    // Reset the transcription result
+    if (transcriptionResult) {
+        transcriptionResult.textContent = '';
+    }
+
+    // Disable the submit button initially
+    if (submitVoiceInput) {
+        submitVoiceInput.disabled = true;
+    }
+
+    // Show the modal
+    if (voiceModal) {
+        voiceModal.style.display = 'flex';
+    }
+
+    // Set up event listeners for the modal
+    const closeVoiceModal = document.getElementById('closeVoiceModal');
+    const cancelVoiceInput = document.getElementById('cancelVoiceInput');
+
+    if (closeVoiceModal) {
+        closeVoiceModal.onclick = function() {
+            closeModal();
+        };
+    }
+
+    if (cancelVoiceInput) {
+        cancelVoiceInput.onclick = function() {
+            closeModal();
+        };
+    }
+
+    // Set up submit button
+    if (submitVoiceInput) {
+        submitVoiceInput.onclick = function() {
+            submitVoiceTranscription();
+        };
+    }
+
+    // Function to close the modal
+    function closeModal() {
+        if (recognition) {
+            try {
+                recognition.stop();
+            } catch (error) {
+                console.error('Error stopping recognition:', error);
+            }
+        }
+
+        if (voiceModal) {
+            voiceModal.style.display = 'none';
+        }
+    }
+
+    // Function to submit the transcription
+    function submitVoiceTranscription() {
+        if (transcriptionResult && transcriptionResult.textContent.trim()) {
+            const userInput = document.getElementById('userInput');
+            if (userInput) {
+                userInput.value = transcriptionResult.textContent.trim();
+                userInput.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        }
+
+        closeModal();
     }
 }

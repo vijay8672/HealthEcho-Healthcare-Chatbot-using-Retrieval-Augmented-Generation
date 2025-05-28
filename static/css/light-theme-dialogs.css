@@ -1,0 +1,307 @@
+/*
+ * Light Theme Dialogs CSS
+ * Ensures all dialogs and popups use light theme styling regardless of app theme
+ */
+
+/* Notification dialog - always light theme */
+.notification-dialog {
+    background-color: #ffffff !important;
+    color: #333333 !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+.notification-dialog-header {
+    color: #333333 !important;
+    font-weight: 600 !important;
+}
+
+.notification-dialog-content {
+    color: #555555 !important;
+}
+
+.notification-dialog-overlay {
+    background-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Notification dialog buttons */
+.notification-dialog-button {
+    background-color: #4285f4 !important;
+    color: white !important;
+}
+
+.notification-dialog-button:hover {
+    background-color: #3367d6 !important;
+}
+
+.notification-dialog-button.cancel-button {
+    background-color: #f1f3f4 !important;
+    color: #333333 !important;
+    border: 1px solid #dadce0 !important;
+}
+
+.notification-dialog-button.cancel-button:hover {
+    background-color: #e8eaed !important;
+}
+
+.notification-dialog-button.confirm-button {
+    font-weight: 500 !important;
+}
+
+/* Delete button styling */
+.notification-dialog-button.confirm-button[style*="background-color: rgb(229, 57, 53)"] {
+    background-color: #e53935 !important;
+}
+
+/* Share dialog */
+.share-dialog {
+    background-color: #ffffff !important;
+    color: #333333 !important;
+}
+
+.share-link-container {
+    background-color: #f8f9fa !important;
+    border: 1px solid #e0e0e0 !important;
+}
+
+.share-link-input {
+    background-color: #ffffff !important;
+    color: #333333 !important;
+    border: 1px solid #dadce0 !important;
+}
+
+.copy-link-btn {
+    background-color: #4285f4 !important;
+    color: white !important;
+}
+
+.copy-link-btn:hover {
+    background-color: #3367d6 !important;
+}
+
+.share-option {
+    background-color: #f1f3f4 !important;
+    color: #333333 !important;
+    border: 1px solid #dadce0 !important;
+}
+
+.share-option:hover {
+    background-color: #e8eaed !important;
+}
+
+/* Modal styling - Light theme */
+.theme-light .modal-content,
+.modal-content {
+    background-color: #ffffff !important;
+    color: #333333 !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+.theme-light .modal-header,
+.modal-header {
+    background-color: #f8f9fa !important;
+    border-bottom: 1px solid #e0e0e0 !important;
+    color: #333333 !important;
+}
+
+.theme-light .modal-header h3,
+.modal-header h3 {
+    color: #333333 !important;
+}
+
+.theme-light .modal-body,
+.modal-body {
+    background-color: #ffffff !important;
+    color: #333333 !important;
+}
+
+.theme-light .modal-footer,
+.modal-footer {
+    background-color: #ffffff !important;
+    border-top: 1px solid #e0e0e0 !important;
+}
+
+/* Modal styling - Dark theme */
+.theme-dark .modal-content {
+    background-color: #1E1E1E !important;
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+.theme-dark .modal-header {
+    background-color: #2B2B2B !important;
+    border-bottom: 1px solid #444654 !important;
+    color: #ffffff !important;
+}
+
+.theme-dark .modal-header h3 {
+    color: #ffffff !important;
+}
+
+.theme-dark .modal-body {
+    background-color: #1E1E1E !important;
+    color: #ffffff !important;
+}
+
+.theme-dark .modal-footer {
+    background-color: #1E1E1E !important;
+    border-top: 1px solid #444654 !important;
+}
+
+/* Settings modal - Light theme */
+.theme-light #settingsModal .modal-content,
+#settingsModal .modal-content {
+    background-color: #ffffff !important;
+}
+
+.theme-light #settingsModal .settings-sidebar,
+#settingsModal .settings-sidebar {
+    background-color: #f8f9fa !important;
+    border-right: 1px solid #e0e0e0 !important;
+}
+
+.theme-light .settings-nav-item,
+.settings-nav-item {
+    color: #333333 !important;
+}
+
+.theme-light .settings-nav-item.active,
+.settings-nav-item.active {
+    background-color: #e8eaed !important;
+    color: #1a73e8 !important;
+}
+
+.theme-light .settings-item-left,
+.settings-item-left {
+    color: #333333 !important;
+}
+
+.theme-light .settings-item-right,
+.settings-item-right {
+    color: #555555 !important;
+}
+
+.theme-light .settings-button,
+.settings-button {
+    background-color: #f1f3f4 !important;
+    color: #333333 !important;
+    border: 1px solid #dadce0 !important;
+}
+
+.theme-light .settings-button:hover,
+.settings-button:hover {
+    background-color: #e8eaed !important;
+}
+
+.theme-light .settings-button.danger,
+.settings-button.danger {
+    color: #e53935 !important;
+}
+
+.theme-light .settings-button.danger:hover,
+.settings-button.danger:hover {
+    background-color: #ffebee !important;
+}
+
+.theme-light .settings-description,
+.settings-description {
+    color: #757575 !important;
+}
+
+/* Settings modal - Dark theme */
+.theme-dark #settingsModal .modal-content {
+    background-color: #1E1E1E !important;
+    color: #ffffff !important;
+}
+
+.theme-dark #settingsModal .settings-sidebar {
+    background-color: #2B2B2B !important;
+    border-right: 1px solid #444654 !important;
+}
+
+.theme-dark .settings-nav-item {
+    color: #ffffff !important;
+}
+
+.theme-dark .settings-nav-item.active {
+    background-color: #343541 !important;
+    color: #ffffff !important;
+}
+
+.theme-dark .settings-item-left {
+    color: #ffffff !important;
+}
+
+.theme-dark .settings-item-right {
+    color: #d1d5db !important;
+}
+
+.theme-dark .settings-button {
+    background-color: #343541 !important;
+    color: #ffffff !important;
+    border: 1px solid #444654 !important;
+}
+
+.theme-dark .settings-button:hover {
+    background-color: #444654 !important;
+}
+
+.theme-dark .settings-button.danger {
+    color: #ff6b6b !important;
+}
+
+.theme-dark .settings-button.danger:hover {
+    background-color: rgba(255, 107, 107, 0.15) !important;
+}
+
+.theme-dark .settings-description {
+    color: #d1d5db !important;
+}
+
+/* Additional dark mode settings for dropdowns and selects */
+.theme-dark select,
+.theme-dark .dropdown-toggle {
+    background-color: #343541 !important;
+    color: #ffffff !important;
+    border: 1px solid #444654 !important;
+}
+
+.theme-dark select option {
+    background-color: #2B2B2B !important;
+    color: #ffffff !important;
+}
+
+.theme-dark .dropdown-menu {
+    background-color: #2B2B2B !important;
+    border: 1px solid #444654 !important;
+}
+
+.theme-dark .dropdown-item {
+    color: #ffffff !important;
+}
+
+.theme-dark .dropdown-item:hover {
+    background-color: #343541 !important;
+}
+
+/* Icon buttons - Light theme */
+.theme-light .icon-button,
+.icon-button {
+    color: #757575 !important;
+}
+
+.theme-light .icon-button:hover,
+.icon-button:hover {
+    color: #333333 !important;
+}
+
+/* Icon buttons - Dark theme */
+.theme-dark .icon-button {
+    color: #d1d5db !important;
+}
+
+.theme-dark .icon-button:hover {
+    color: #ffffff !important;
+}

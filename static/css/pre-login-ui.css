@@ -1,0 +1,521 @@
+/* Pre-login UI styles - Black, White, Gray interface */
+:root {
+    --bg-primary: #FFFFFF;
+    --text-primary: #000000;
+    --text-secondary: #666666;
+    --border-color: #E5E5E5;
+    --accent-color: #333333;
+    --accent-hover: #555555;
+    --button-bg: #000000;
+    --button-text: #FFFFFF;
+    --button-hover-bg: #333333;
+    --input-bg: #FFFFFF;
+    --input-border: #E5E5E5;
+    --input-text: #000000;
+    --input-placeholder: #999999;
+}
+
+.pre-login-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background-color: var(--bg-primary);
+}
+
+.pre-login-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.pre-login-logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    font-size: 20px;
+    color: var(--text-primary);
+}
+
+.pre-login-logo i {
+    font-size: 22px;
+    color: var(--accent-color);
+}
+
+.pre-login-logo span {
+    display: inline-block;
+    letter-spacing: 0.5px;
+}
+
+.pre-login-logo img {
+    height: 24px;
+}
+
+.pre-login-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.login-btn {
+    background-color: var(--button-bg);
+    color: var(--button-text);
+    border: none;
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.login-btn:hover {
+    background-color: var(--button-hover-bg);
+}
+
+.signup-btn {
+    background-color: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.signup-btn:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    border-color: var(--text-secondary);
+}
+
+.pre-login-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px;
+    position: relative;
+}
+
+/* Welcome message styles */
+.pre-login-welcome-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    position: fixed;
+    top: 35%; /* Reduced from 40% to move it higher */
+    left: 0;
+    right: 0;
+    transform: translateY(-50%); /* Vertical centering adjustment */
+    transition: all 0.3s ease-out;
+    margin-bottom: 40px; /* Add bottom margin to create more space */
+}
+
+.pre-login-welcome-message {
+    background-color: var(--bg-primary);
+    border-radius: 12px;
+    padding: 28px;
+    max-width: 700px;
+    width: 90%;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    text-align: center;
+    border: 1px solid var(--border-color);
+    transition: transform 0.3s ease-out;
+}
+
+.pre-login-welcome-message h2 {
+    margin-bottom: 16px;
+    color: var(--text-primary);
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.pre-login-welcome-message p {
+    margin-bottom: 24px;
+    color: var(--text-secondary);
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+}
+
+.pre-login-suggestion-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+}
+
+.pre-login-suggestion-chip {
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 14px;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.pre-login-suggestion-chip:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    border-color: var(--text-secondary);
+}
+
+/* Bottom input container */
+.pre-login-bottom-input-container {
+    width: 100%;
+    max-width: 768px;
+    margin-top: auto;
+    position: fixed;
+    top: 65%; /* Increased from 60% to move it lower and create more space */
+    left: 50%;
+    transform: translate(-50%, -50%); /* Center both horizontally and vertically */
+    padding: 0 24px;
+    z-index: 10;
+    margin-top: 40px; /* Add top margin to increase the gap */
+}
+
+.pre-login-bottom-input-container .pre-login-input-wrapper {
+    border-radius: 16px;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05), 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.pre-login-bottom-input-container .pre-login-input {
+    padding: 14px 16px;
+    font-size: 16px;
+    border-radius: 16px 16px 0 0;
+}
+
+.pre-login-bottom-input-container .pre-login-input-actions {
+    padding: 8px 16px 12px;
+    border-top: none;
+}
+
+.pre-login-bottom-input-container .pre-login-action-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.pre-login-bottom-input-container .pre-login-action-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border-radius: 6px;
+}
+
+.pre-login-bottom-input-container .pre-login-action-btn i {
+    font-size: 16px;
+}
+
+.pre-login-bottom-input-container .pre-login-action-btn span {
+    display: none;
+}
+
+.pre-login-bottom-input-container .pre-login-send-btn {
+    width: 32px;
+    height: 32px;
+}
+
+.pre-login-input-wrapper {
+    display: flex;
+    flex-direction: column;
+    background-color: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 12px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+}
+
+.pre-login-input {
+    width: 100%;
+    padding: 16px;
+    border: none;
+    outline: none;
+    font-size: 16px;
+    color: var(--input-text);
+    background-color: transparent;
+    resize: none;
+    min-height: 24px;
+    max-height: 200px;
+    line-height: 1.5;
+}
+
+.pre-login-input::placeholder {
+    color: var(--input-placeholder);
+}
+
+.pre-login-input-actions {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 16px;
+    border-top: 1px solid var(--border-color);
+}
+
+.pre-login-action-buttons {
+    display: flex;
+    gap: 12px;
+}
+
+.pre-login-action-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.pre-login-action-btn:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.pre-login-voice-btn {
+    background-color: #000000;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.2s;
+}
+
+.pre-login-voice-btn:hover {
+    background-color: #333333;
+}
+
+.pre-login-right-actions {
+    display: flex;
+    align-items: center;
+}
+
+.pre-login-send-btn {
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.2s;
+    padding: 0;
+    overflow: hidden;
+    margin-left: 8px;
+}
+
+.pre-login-send-btn:hover {
+    background-color: var(--accent-hover);
+    transform: none;
+}
+
+.pre-login-send-btn .send-icon {
+    width: 16px;
+    height: 16px;
+    display: block;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    margin: 0;
+    padding: 0;
+    line-height: 0;
+}
+
+/* Hide sidebar and other elements when not logged in */
+html.not-logged-in .sidebar,
+html.not-logged-in .chat-header,
+html.not-logged-in .chat-input-container,
+html.not-logged-in #toggleSidebar,
+body.not-logged-in .sidebar,
+body.not-logged-in .chat-header,
+body.not-logged-in .chat-input-container,
+body.not-logged-in #toggleSidebar {
+    display: none !important;
+}
+
+html.not-logged-in .chat-container,
+body.not-logged-in .chat-container {
+    width: 100%;
+    padding: 0;
+    margin: 0;
+}
+
+html.not-logged-in .chat-messages,
+body.not-logged-in .chat-messages {
+    display: none;
+}
+
+/* Show pre-login UI when not logged in */
+html.not-logged-in .pre-login-container,
+body.not-logged-in .pre-login-container {
+    display: flex;
+}
+
+/* Hide pre-login UI when logged in */
+html.logged-in .pre-login-container,
+body.logged-in .pre-login-container,
+html:not(.not-logged-in) .pre-login-container,
+body:not(.not-logged-in) .pre-login-container {
+    display: none;
+}
+
+/* Pre-login chat container */
+.pre-login-chat-container {
+    width: 100%;
+    max-width: 700px;
+    margin: 20px auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 0 24px;
+    transition: all 0.3s ease;
+    position: relative;
+    z-index: 5;
+}
+
+/* Pre-login message styles */
+.pre-login-message {
+    padding: 12px 16px;
+    border-radius: 8px;
+    max-width: 80%;
+    word-wrap: break-word;
+    line-height: 1.5;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    margin-bottom: 8px;
+}
+
+.pre-login-user-message {
+    background-color: #f0f0f0;
+    color: var(--text-primary);
+    align-self: flex-end;
+    margin-left: auto;
+    border-bottom-right-radius: 4px;
+}
+
+.pre-login-bot-message {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    align-self: flex-start;
+    margin-right: auto;
+    border-bottom-left-radius: 4px;
+}
+
+/* Typing indicator */
+.pre-login-bot-typing {
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    align-self: flex-start;
+    margin-right: auto;
+    padding: 12px 16px;
+}
+
+.typing-indicator {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.typing-indicator span {
+    width: 8px;
+    height: 8px;
+    background-color: var(--text-secondary);
+    border-radius: 50%;
+    display: inline-block;
+    opacity: 0.6;
+    animation: typing-animation 1.4s infinite ease-in-out both;
+}
+
+.typing-indicator span:nth-child(1) {
+    animation-delay: 0s;
+}
+
+.typing-indicator span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.typing-indicator span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes typing-animation {
+    0%, 80%, 100% {
+        transform: scale(0.6);
+    }
+    40% {
+        transform: scale(1);
+    }
+}
+
+/* Pre-login notification */
+.pre-login-notification {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-100px);
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 16px;
+    z-index: 1000;
+    min-width: 300px;
+    max-width: 400px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    transition: transform 0.3s ease-out;
+}
+
+.pre-login-notification.show {
+    transform: translateX(-50%) translateY(0);
+}
+
+.pre-login-notification-content {
+    flex: 1;
+}
+
+.pre-login-notification-title {
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: var(--text-primary);
+}
+
+.pre-login-notification-message {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.pre-login-notification-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 0 0 0 16px;
+}

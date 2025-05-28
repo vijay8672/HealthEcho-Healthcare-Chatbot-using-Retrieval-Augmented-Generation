@@ -27,21 +27,51 @@ document.addEventListener('DOMContentLoaded', () => {
         // Hide slider on homepage only
         hideSliderOnHomepage();
 
+        // Add window resize event listener to ensure chat input stays centered
+        window.addEventListener('resize', () => {
+            // Use setTimeout to ensure this runs after any layout changes
+            setTimeout(() => {
+                const chatInputContainer = document.querySelector('.chat-input-container');
+                const welcomeContainer = document.querySelector('.welcome-container');
+                const greetingContainer = document.getElementById('greetingMessageContainer');
+
+                if (chatInputContainer) {
+                    if (welcomeContainer || (greetingContainer && greetingContainer.style.display !== 'none')) {
+                        // If welcome container or greeting is visible, position input box below it
+                        chatInputContainer.style.left = '50%';
+                        chatInputContainer.style.transform = 'translate(-50%, -50%)';
+                        chatInputContainer.style.marginLeft = '0';
+                        chatInputContainer.style.right = 'auto';
+                        chatInputContainer.style.bottom = 'auto';
+                        chatInputContainer.style.top = '65%';
+                    } else {
+                        // Otherwise, position at bottom
+                        chatInputContainer.style.left = '50%';
+                        chatInputContainer.style.transform = 'translate(-50%, 0)';
+                        chatInputContainer.style.marginLeft = '0';
+                        chatInputContainer.style.right = 'auto';
+                        chatInputContainer.style.bottom = '24px';
+                        chatInputContainer.style.top = 'auto';
+                    }
+                }
+            }, 100);
+        });
+
         console.log('ChatGPT-style UI initialized');
     } catch (error) {
         console.error('Error during initialization:', error);
     }
 });
 
-// Function to show slider on all pages (including homepage)
+// Function to ensure the theme toggle is always hidden (only available in settings)
 function hideSliderOnHomepage() {
     try {
         const headerThemeToggle = document.querySelector('.header-theme-toggle');
 
-        // Always show the theme toggle
+        // Always hide the theme toggle (it's only available in settings now)
         if (headerThemeToggle) {
-            headerThemeToggle.style.display = 'flex';
-            console.log('Theme toggle is now visible on all pages');
+            headerThemeToggle.style.display = 'none';
+            console.log('Theme toggle is hidden (only available in settings)');
         }
     } catch (error) {
         console.error('Error setting up theme toggle visibility:', error);
@@ -66,19 +96,7 @@ function ensureSidebarToggleVisible() {
             }
         }
 
-        if (sidebar && toggleBtn) {
-            // Make sure the toggle button is visible
-            toggleBtn.style.display = 'flex';
-
-            // If sidebar is collapsed, ensure toggle button has proper styling
-            if (sidebar.classList.contains('collapsed')) {
-                toggleBtn.style.position = 'fixed';
-                toggleBtn.style.zIndex = '1000';
-                toggleBtn.style.backgroundColor = 'var(--bg-secondary)';
-                toggleBtn.style.border = '1px solid var(--border-color)';
-                toggleBtn.style.color = 'var(--text-primary)';
-            }
-        }
+        // No need to add inline styles - we'll handle everything with CSS
     } catch (error) {
         console.error('Error ensuring sidebar toggle visibility:', error);
     }
@@ -104,6 +122,7 @@ function getElements() {
         elements.chatContainer = document.querySelector('.chat-container');
 
         // New sidebar action buttons
+        elements.newChatBtn = document.getElementById('newChatBtn');
         elements.sidebarSearchBtn = document.getElementById('sidebarSearchBtn');
         // Header search button removed as per user request
         elements.sidebarEditBtn = document.getElementById('sidebarEditBtn');
@@ -141,6 +160,36 @@ function setupAllEventListeners() {
 
                 // Save preference
                 localStorage.setItem('sidebarCollapsed', !isCollapsed);
+
+                // Ensure chat input container stays centered
+                ensureChatInputCentered();
+            }
+        }
+
+        // Function to ensure chat input stays centered
+        function ensureChatInputCentered() {
+            const chatInputContainer = document.querySelector('.chat-input-container');
+            const welcomeContainer = document.querySelector('.welcome-container');
+            const greetingContainer = document.getElementById('greetingMessageContainer');
+
+            if (chatInputContainer) {
+                if (welcomeContainer || (greetingContainer && greetingContainer.style.display !== 'none')) {
+                    // If welcome container or greeting is visible, position input box below it
+                    chatInputContainer.style.left = '50%';
+                    chatInputContainer.style.transform = 'translate(-50%, -50%)';
+                    chatInputContainer.style.bottom = 'auto';
+                    chatInputContainer.style.top = '65%';
+                } else {
+                    // Otherwise, position at bottom
+                    chatInputContainer.style.left = '50%';
+                    chatInputContainer.style.transform = 'translate(-50%, 0)';
+                    chatInputContainer.style.bottom = '24px';
+                    chatInputContainer.style.top = 'auto';
+                }
+
+                // Common styles
+                chatInputContainer.style.marginLeft = '0';
+                chatInputContainer.style.right = 'auto';
             }
         }
 
@@ -181,6 +230,9 @@ function setupAllEventListeners() {
                 const appContainer = document.querySelector('.app-container');
                 if (appContainer) appContainer.classList.add('sidebar-hidden');
             }
+
+            // Ensure chat input is centered regardless of sidebar state
+            ensureChatInputCentered();
         }
 
         // Theme toggle function
@@ -228,10 +280,17 @@ function setupAllEventListeners() {
         }
 
         // New chat button
-        if (elements.newChatBtn) {
-            elements.newChatBtn.addEventListener('click', () => {
-                startNewChat();
-            });
+        // We don't need to add an event listener here anymore
+        // The global click handler in new-chat-handler.js will handle this
+        // This prevents duplicate event handlers
+        const newChatBtn = document.getElementById('newChatBtn');
+        if (newChatBtn) {
+            elements.newChatBtn = newChatBtn;
+            console.log('New chat button found - will be handled by global handler');
+
+            // Ensure the button is visible and clickable
+            newChatBtn.style.position = 'relative';
+            newChatBtn.style.zIndex = '1050';
         }
 
         // Export chat button - disabled as per user request
@@ -388,33 +447,45 @@ function setupSidebarActionButtons() {
 // Show search interface
 function showSearchInterface() {
     try {
-        // Create a simple search modal
+        // Check if a search modal already exists (created by search-modal-fix.js)
+        const existingModal = document.querySelector('#searchModal, .search-modal');
+        if (existingModal) {
+            // Use the existing modal instead of creating a new one
+            console.log('Using existing search modal');
+            existingModal.style.display = 'flex';
+
+            // Focus the search input
+            const searchInput = existingModal.querySelector('.search-input');
+            if (searchInput) {
+                searchInput.focus();
+            }
+
+            return; // Exit early
+        }
+
+        // If no existing modal, create a simple search modal
+        console.log('No existing search modal found, creating one');
         const searchModal = document.createElement('div');
         searchModal.className = 'modal';
         searchModal.id = 'searchModal';
 
         searchModal.innerHTML = `
             <div class="modal-content search-modal-content">
-                <div class="modal-header">
-                    <h3>Search Conversations</h3>
-                    <button id="closeSearchModal" class="icon-button">
-                        <i class="fas fa-times"></i>
-                    </button>
+                <div class="search-input-container">
+                    <div class="search-input-wrapper">
+                        <input type="text" id="modalSearchInput" class="search-input" placeholder="Search chats...">
+                        <button id="closeSearchModal" class="search-close-btn">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="modal-body">
-                    <div class="search-form">
-                        <div class="form-group">
-                            <input type="text" id="modalSearchInput" class="form-control" placeholder="Search chats...">
-                        </div>
-                        <div class="new-chat-option">
-                            <div class="search-result-item new-chat-item">
-                                <div class="search-result-title">New chat</div>
-                            </div>
-                        </div>
-                        <div class="search-section-divider">Today</div>
-                        <div id="searchResults" class="search-results">
-                            <p class="search-prompt">Enter keywords to search through your conversations</p>
-                        </div>
+                    <div class="new-chat-item" id="searchModalNewChat">
+                        <i class="fas fa-edit new-chat-icon"></i>
+                        <div class="new-chat-title">New chat</div>
+                    </div>
+                    <div id="searchResults" class="search-results">
+                        <p class="search-prompt">Enter keywords to search through your conversations</p>
                     </div>
                 </div>
             </div>
@@ -460,20 +531,13 @@ function showSearchInterface() {
             // Add escape key listener
             document.addEventListener('keydown', handleEscapeKey);
 
-            // New chat functionality
-            const newChatItem = searchModal.querySelector('.new-chat-item');
+            // New chat functionality - using the centralized handler
+            const newChatItem = document.getElementById('searchModalNewChat');
             if (newChatItem) {
-                newChatItem.addEventListener('click', () => {
-                    // Close the search modal
-                    searchModal.style.display = 'none';
-                    document.removeEventListener('keydown', handleEscapeKey);
-                    setTimeout(() => {
-                        searchModal.remove();
-                    }, 300);
-
-                    // Start a new chat
-                    startNewChat();
-                });
+                // We don't need to add an event listener here anymore
+                // The global click handler in new-chat-handler.js will handle this
+                // This prevents duplicate event handlers
+                console.log('Search modal new chat button ready - will be handled by global handler');
             }
 
             // Search input functionality
@@ -499,15 +563,21 @@ function showSearchInterface() {
 
                             if (matchingChats.length > 0) {
                                 // Group chats by date
-                                const today = new Date();
+                                const now = new Date();
+
+                                // Get today's date (midnight)
+                                const today = new Date(now);
                                 today.setHours(0, 0, 0, 0);
 
+                                // Get yesterday's date (midnight)
                                 const yesterday = new Date(today);
                                 yesterday.setDate(yesterday.getDate() - 1);
 
+                                // Get one week ago
                                 const lastWeekStart = new Date(today);
                                 lastWeekStart.setDate(lastWeekStart.getDate() - 7);
 
+                                // Get one month ago
                                 const lastMonthStart = new Date(today);
                                 lastMonthStart.setDate(lastMonthStart.getDate() - 30);
 
@@ -521,32 +591,73 @@ function showSearchInterface() {
                                 // Group chats
                                 const todayChats = matchingChats.filter(chat => {
                                     const chatDate = chat.timestamp ? new Date(chat.timestamp) : null;
-                                    return chatDate && chatDate >= today;
+                                    if (!chatDate) return false;
+
+                                    // Get the chat date at midnight for proper day comparison
+                                    const chatDateMidnight = new Date(chatDate);
+                                    chatDateMidnight.setHours(0, 0, 0, 0);
+
+                                    // Compare dates at midnight level for proper day categorization
+                                    return chatDateMidnight.getTime() === today.getTime();
                                 });
 
                                 const yesterdayChats = matchingChats.filter(chat => {
                                     const chatDate = chat.timestamp ? new Date(chat.timestamp) : null;
-                                    return chatDate && chatDate >= yesterday && chatDate < today;
+                                    if (!chatDate) return false;
+
+                                    // Get the chat date at midnight for proper day comparison
+                                    const chatDateMidnight = new Date(chatDate);
+                                    chatDateMidnight.setHours(0, 0, 0, 0);
+
+                                    // Compare dates at midnight level for proper day categorization
+                                    return chatDateMidnight.getTime() === yesterday.getTime();
                                 });
 
                                 const lastWeekChats = matchingChats.filter(chat => {
                                     const chatDate = chat.timestamp ? new Date(chat.timestamp) : null;
-                                    return chatDate && chatDate >= lastWeekStart && chatDate < yesterday;
+                                    if (!chatDate) return false;
+
+                                    // Get the chat date at midnight for proper day comparison
+                                    const chatDateMidnight = new Date(chatDate);
+                                    chatDateMidnight.setHours(0, 0, 0, 0);
+
+                                    // Compare dates at midnight level for proper day categorization
+                                    return chatDateMidnight >= lastWeekStart &&
+                                           chatDateMidnight < yesterday;
                                 });
 
                                 const olderChats = matchingChats.filter(chat => {
                                     const chatDate = chat.timestamp ? new Date(chat.timestamp) : null;
-                                    return chatDate && chatDate < lastWeekStart;
+                                    if (!chatDate) return false;
+
+                                    // Get the chat date at midnight for proper day comparison
+                                    const chatDateMidnight = new Date(chatDate);
+                                    chatDateMidnight.setHours(0, 0, 0, 0);
+
+                                    // Compare dates at midnight level for proper day categorization
+                                    return chatDateMidnight < lastWeekStart;
                                 });
 
                                 // Build HTML
                                 let resultsHTML = '';
 
+                                // Function to create a chat item HTML
+                                const createChatItemHTML = (chat) => {
+                                    return `
+                                        <div class="search-result-item" data-chat-id="${chat.id}">
+                                            <i class="fas fa-comment-dots chat-icon"></i>
+                                            <div class="search-result-content">
+                                                <div class="search-result-title">${chat.title || 'Untitled Chat'}</div>
+                                            </div>
+                                        </div>
+                                    `;
+                                };
+
                                 // Add today's chats
                                 if (todayChats.length > 0) {
                                     resultsHTML += '<div class="search-section-divider">Today</div>';
                                     todayChats.forEach(chat => {
-                                        // Find a snippet that contains the search query
+                                        // Find a snippet that contains the search query (for internal use only)
                                         let snippet = '';
                                         if (chat.messages && chat.messages.length > 0) {
                                             const matchingMessage = chat.messages.find(msg =>
@@ -567,6 +678,7 @@ function showSearchInterface() {
 
                                         resultsHTML += `
                                             <div class="search-result-item" data-chat-id="${chat.id}">
+                                                <i class="fas fa-comment-dots chat-icon"></i>
                                                 <div class="search-result-content">
                                                     <div class="search-result-title">${chat.title || 'Untitled Chat'}</div>
                                                     <div class="search-result-snippet">${snippet}</div>
@@ -601,6 +713,7 @@ function showSearchInterface() {
 
                                         resultsHTML += `
                                             <div class="search-result-item" data-chat-id="${chat.id}">
+                                                <i class="fas fa-comment-dots chat-icon"></i>
                                                 <div class="search-result-content">
                                                     <div class="search-result-title">${chat.title || 'Untitled Chat'}</div>
                                                     <div class="search-result-snippet">${snippet}</div>
@@ -635,6 +748,7 @@ function showSearchInterface() {
 
                                         resultsHTML += `
                                             <div class="search-result-item" data-chat-id="${chat.id}">
+                                                <i class="fas fa-comment-dots chat-icon"></i>
                                                 <div class="search-result-content">
                                                     <div class="search-result-title">${chat.title || 'Untitled Chat'}</div>
                                                     <div class="search-result-snippet">${snippet}</div>
@@ -669,6 +783,7 @@ function showSearchInterface() {
 
                                         resultsHTML += `
                                             <div class="search-result-item" data-chat-id="${chat.id}">
+                                                <i class="fas fa-comment-dots chat-icon"></i>
                                                 <div class="search-result-content">
                                                     <div class="search-result-title">${chat.title || 'Untitled Chat'}</div>
                                                     <div class="search-result-snippet">${snippet}</div>
@@ -947,15 +1062,15 @@ function simulateBotResponse(userMessage) {
             let response = "I'd be happy to help with that! Here's some information about our company policies:\n\n";
 
             if (userMessage.toLowerCase().includes('leave') || userMessage.toLowerCase().includes('policy')) {
-                response += "## Leave Policy\n\n- Employees are entitled to 20 days of annual leave\n- Sick leave is unlimited with doctor's note\n- Parental leave is 12 weeks paid for primary caregivers\n- Bereavement leave is 5 days for immediate family";
+                response += "## 🗓️ Leave Policy\n\n- ✅ Employees are entitled to 20 days of annual leave\n- 🏥 Sick leave is unlimited with doctor's note\n- 👶 Parental leave is 12 weeks paid for primary caregivers\n- 💐 Bereavement leave is 5 days for immediate family";
             } else if (userMessage.toLowerCase().includes('work from home') || userMessage.toLowerCase().includes('remote')) {
-                response += "## Work From Home Policy\n\n- Employees can work remotely up to 3 days per week\n- Must maintain core hours of 10am-3pm\n- Need to be available for scheduled meetings\n- Equipment is provided for home office setup";
+                response += "## 🏠 Work From Home Policy\n\n- 🏡 Employees can work remotely up to 3 days per week\n- ⏰ Must maintain core hours of 10am-3pm\n- 📅 Need to be available for scheduled meetings\n- 💻 Equipment is provided for home office setup";
             } else if (userMessage.toLowerCase().includes('dress code')) {
-                response += "## Dress Code\n\n- Business casual is the standard dress code\n- Casual Fridays allow for jeans and t-shirts\n- Client meetings require business professional attire\n- Company logo apparel is available and encouraged";
+                response += "## 👔 Dress Code\n\n- 👚 Business casual is the standard dress code\n- 👖 Casual Fridays allow for jeans and t-shirts\n- 👔 Client meetings require business professional attire\n- 👕 Company logo apparel is available and encouraged";
             } else if (userMessage.toLowerCase().includes('referral')) {
-                response += "## Employee Referral Program\n\n- $2,000 bonus for successful referrals after 90 days\n- Additional $1,000 if referral stays for 1 year\n- No limit on number of referrals\n- Referral must list your name on their application";
+                response += "## 👥 Employee Referral Program\n\n- 💰 $2,000 bonus for successful referrals after 90 days\n- 💵 Additional $1,000 if referral stays for 1 year\n- ♾️ No limit on number of referrals\n- 📝 Referral must list your name on their application";
             } else {
-                response += "- We have a flexible work policy that allows for remote work options\n- Our leave policy includes 20 days of annual leave plus public holidays\n- We offer comprehensive health insurance for all employees\n\nIs there anything specific you'd like to know more about?";
+                response += "- 🏡 We have a flexible work policy that allows for remote work options\n- 🗓️ Our leave policy includes 20 days of annual leave plus public holidays\n- 🏥 We offer comprehensive health insurance for all employees\n\nIs there anything specific you'd like to know more about?";
             }
 
             // Add bot message to UI
@@ -1003,55 +1118,45 @@ function removeTypingIndicator() {
     }
 }
 
-// Start new chat
+// Start new chat - now just a wrapper for the centralized handler
 function startNewChat() {
     try {
-        console.log('Starting new chat...');
+        console.log('startNewChat called in chatgpt-ui-clean.js - delegating to centralized handler');
 
-        // Clear chat log
-        chatLog = [];
+        // Use the centralized handler if available
+        if (window.newChatHandler && typeof window.newChatHandler.startNewChat === 'function') {
+            window.newChatHandler.startNewChat();
+        } else if (typeof window.startNewChat === 'function' && window.startNewChat !== startNewChat) {
+            // If there's a global startNewChat that's not this function, use it
+            window.startNewChat();
+        } else {
+            console.error('No centralized new chat handler found - this should not happen');
 
-        if (!elements.chatMessages) {
-            console.error('Chat messages container not found');
-            return;
-        }
+            // Fallback implementation (should never be used)
+            chatLog = [];
 
-        // Clear UI
-        elements.chatMessages.innerHTML = '';
-
-        // Add welcome message
-        elements.chatMessages.innerHTML = `
-            <div class="welcome-container">
-                <div class="welcome-message">
-                    <h2>Welcome to ZiaHR</h2>
-                    <p>I can help you with questions about company policies, employee guidelines, and HR procedures.</p>
-                    <div class="suggestion-chips">
-                        <button class="suggestion-chip">Leave Policy</button>
-                        <button class="suggestion-chip">Referral Program</button>
-                        <button class="suggestion-chip">Dress Code</button>
-                        <button class="suggestion-chip">Work from Home</button>
+            if (elements.chatMessages) {
+                elements.chatMessages.innerHTML = `
+                    <div class="welcome-container">
+                        <div class="welcome-message">
+                            <h2>Welcome to ZiaHR</h2>
+                            <p>I can help you with questions about company policies, employee guidelines, and HR procedures.</p>
+                            <div class="suggestion-chips">
+                                <button class="suggestion-chip">Leave Policy</button>
+                                <button class="suggestion-chip">Referral Program</button>
+                                <button class="suggestion-chip">Dress Code</button>
+                                <button class="suggestion-chip">Work from Home</button>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
-        `;
+                `;
 
-        // Set up suggestion chips
-        setupSuggestionChips();
-
-        // Handle sidebar state
-        if (elements.sidebar) {
-            if (window.innerWidth <= 768) {
-                // On mobile, just remove active state
-                elements.sidebar.classList.remove('active');
-            } else if (localStorage.getItem('sidebarCollapsed') === 'true') {
-                // On desktop, maintain collapsed state if that was the user's preference
-                elements.sidebar.classList.add('collapsed');
+                // Set up suggestion chips
+                setupSuggestionChips();
             }
         }
-
-        console.log('New chat started successfully');
     } catch (error) {
-        console.error('Error starting new chat:', error);
+        console.error('Error in startNewChat wrapper:', error);
     }
 }
 
@@ -1284,6 +1389,14 @@ function addMessageToUI(type, message, messageId = null, sources = []) {
 
         // Add to chat log
         chatLog.push({ type, message, messageId, sources, timestamp: new Date().toISOString() });
+
+        // Reposition the chat input to the bottom when messages are present
+        const chatInputContainer = document.querySelector('.chat-input-container');
+        if (chatInputContainer) {
+            chatInputContainer.style.top = 'auto';
+            chatInputContainer.style.bottom = '24px';
+            chatInputContainer.style.transform = 'translate(-50%, 0)';
+        }
 
         console.log(`Added ${type} message to UI`);
     } catch (error) {

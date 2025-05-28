@@ -1,0 +1,242 @@
+/* New Search Modal Styles based on reference image */
+.search-modal-content {
+    max-width: 550px; /* Increased from 350px to make it wider */
+    width: 90%;
+    border: 1px solid #e5e5e5;
+    background-color: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    margin: 0 auto;
+    overflow: hidden;
+    padding: 0;
+}
+
+/* Remove header and integrate search directly at top */
+.search-modal-header {
+    display: none;
+}
+
+.modal-body {
+    padding: 0;
+    max-height: 80vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Search input styling */
+.search-input-container {
+    position: relative;
+    padding: 12px 16px;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.search-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.search-input {
+    width: 100%;
+    padding: 10px 0;
+    border: none;
+    background-color: transparent;
+    font-size: 16px;
+    color: #000000;
+    outline: none;
+    font-weight: 400;
+}
+
+.search-input::placeholder {
+    color: #999999;
+}
+
+.search-close-btn {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    color: #999999;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* New chat item styling */
+.new-chat-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: background-color 0.15s; /* Faster transition for better performance */
+    border-bottom: 1px solid #f0f0f0;
+    font-weight: 500; /* Make it stand out more */
+}
+
+.new-chat-item:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.new-chat-icon {
+    margin-right: 12px;
+    color: #666666;
+    font-size: 16px;
+}
+
+.new-chat-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: #000000;
+}
+
+/* Date section dividers */
+.search-section-divider {
+    padding: 6px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #666666;
+    background-color: #f5f5f5;
+    width: 100%;
+}
+
+/* Search results */
+.search-results {
+    width: 100%;
+}
+
+.search-prompt {
+    padding: 30px 16px;
+    text-align: center;
+    color: #666666;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.5;
+}
+
+/* Chat result items */
+.search-result-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: background-color 0.15s; /* Faster transition for better performance */
+    border-bottom: 1px solid #f0f0f0;
+    text-align: left; /* Ensure text alignment is consistent */
+}
+
+.search-result-item:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.chat-icon {
+    margin-right: 12px;
+    color: #666666;
+    font-size: 16px;
+    flex-shrink: 0;
+    display: inline-block; /* Restore chat icons */
+}
+
+.search-result-content {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    min-width: 0; /* Ensures text truncation works */
+}
+
+.search-result-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: #000000;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block; /* Ensure titles are displayed */
+}
+
+.search-result-snippet {
+    display: none; /* Hide snippets as per reference image */
+}
+
+/* Scrollbar styling */
+.modal-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+}
+
+/* Dark theme support */
+.theme-dark .search-modal-content {
+    background-color: #1E1E1E;
+    border-color: #444654;
+    max-width: 550px; /* Increased from 350px to match light theme */
+}
+
+.theme-dark .search-input-container {
+    border-color: #444654;
+}
+
+.theme-dark .search-input {
+    color: #FFFFFF;
+}
+
+.theme-dark .search-input::placeholder {
+    color: #BBBBBB;
+}
+
+.theme-dark .search-close-btn {
+    color: #BBBBBB;
+}
+
+.theme-dark .new-chat-item {
+    border-color: #444654;
+}
+
+.theme-dark .new-chat-item:hover {
+    background-color: #343541;
+}
+
+.theme-dark .new-chat-icon,
+.theme-dark .chat-icon {
+    color: #BBBBBB;
+}
+
+.theme-dark .new-chat-title,
+.theme-dark .search-result-title {
+    color: #FFFFFF;
+}
+
+.theme-dark .search-section-divider {
+    background-color: #2B2B2B;
+    color: #EDEDED;
+    border-color: #444654;
+}
+
+.theme-dark .search-prompt {
+    color: #EDEDED;
+    font-weight: 400;
+}
+
+.theme-dark .search-result-item {
+    border-color: #444654;
+}
+
+.theme-dark .search-result-item:hover {
+    background-color: #343541;
+}
+
+.theme-dark .modal-body::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.2);
+}

@@ -11,6 +11,7 @@ class FileManager {
         this.isLocked = false; // State to track if files are locked (after query submission)
         this.fileListContainer = document.getElementById('fileListContainer');
         this.inputAttachmentsContainer = document.getElementById('inputAttachmentsContainer');
+        this.fileDisplayArea = document.querySelector('.file-display-area');
         this.previewModal = document.getElementById('filePreviewModal');
         this.previewContainer = document.getElementById('filePreviewContainer');
         this.previewFileName = document.getElementById('previewFileName');
@@ -98,73 +99,90 @@ class FileManager {
         // If files are locked, don't allow new uploads
         if (this.isLocked) {
             console.log('Files are locked. Cannot upload new files.');
+            this.showToastNotification('Files Locked', 'Files are locked during processing. Please wait.', true);
             return;
         }
 
-        // Make sure the input attachments container is visible
-        if (this.inputAttachmentsContainer) {
-            this.inputAttachmentsContainer.style.display = 'flex';
-            console.log('Ensuring input attachments container is visible');
-        }
-
-        // Process each file
-        const files = Array.from(fileList);
-        if (files.length > 0) {
-            console.log(`Processing ${files.length} files for upload`);
-
-            // Log current files for debugging
-            console.log(`Current files in manager: ${this.files.length}`);
-            this.files.forEach(file => {
-                console.log(`Existing file: ${file.name} (ID: ${file.id})`);
-            });
-
-            // Limit to 7 files maximum
-            const maxFiles = 7;
-            const currentFileCount = this.files.length;
-            const availableSlots = maxFiles - currentFileCount;
-
-            console.log(`Available slots: ${availableSlots} (max: ${maxFiles}, current: ${currentFileCount})`);
-
-            if (availableSlots <= 0) {
-                console.log('Maximum file limit reached (7 files)');
-                // Show notification to user about max file limit
-                this.showMaxFilesNotification();
-                return;
+        try {
+            // Make sure the input attachments container is visible
+            if (this.inputAttachmentsContainer) {
+                this.inputAttachmentsContainer.style.display = 'flex';
+                console.log('Ensuring input attachments container is visible');
             }
-
-            // Check for duplicate files
-            const uniqueFiles = [];
-            const duplicateFiles = [];
-
-            files.forEach(file => {
-                // Check if file with same name already exists
-                const isDuplicate = this.files.some(existingFile => existingFile.name === file.name);
-
-                if (isDuplicate) {
-                    duplicateFiles.push(file.name);
-                    console.log(`Skipping duplicate file: ${file.name}`);
-                } else {
-                    uniqueFiles.push(file);
-                    console.log(`Adding unique file: ${file.name}`);
-                }
-            });
-
-            // Show notification if duplicates were found
-            if (duplicateFiles.length > 0) {
-                this.showDuplicateFilesNotification(duplicateFiles);
-            }
-
-            // Process only unique files up to the available slots
-            const filesToProcess = uniqueFiles.slice(0, availableSlots);
-            console.log(`Processing ${filesToProcess.length} unique files (${duplicateFiles.length} duplicates removed)`);
 
             // Process each file
-            filesToProcess.forEach(file => {
-                this.uploadFile(file);
-            });
+            const files = Array.from(fileList);
+            if (files.length > 0) {
+                console.log(`Processing ${files.length} files for upload`);
 
-            // Update send button state
-            this.updateSendButtonState();
+                // Log current files for debugging
+                console.log(`Current files in manager: ${this.files.length}`);
+                this.files.forEach(file => {
+                    console.log(`Existing file: ${file.name} (ID: ${file.id})`);
+                });
+
+                // Limit to 7 files maximum
+                const maxFiles = 7;
+                const currentFileCount = this.files.length;
+                const availableSlots = maxFiles - currentFileCount;
+
+                console.log(`Available slots: ${availableSlots} (max: ${maxFiles}, current: ${currentFileCount})`);
+
+                if (availableSlots <= 0) {
+                    console.log('Maximum file limit reached (7 files)');
+                    // Show notification to user about max file limit
+                    this.showMaxFilesNotification();
+                    return;
+                }
+
+                // Check for duplicate files
+                const uniqueFiles = [];
+                const duplicateFiles = [];
+
+                files.forEach(file => {
+                    // Check if file with same name already exists
+                    const isDuplicate = this.files.some(existingFile => existingFile.name === file.name);
+
+                    if (isDuplicate) {
+                        duplicateFiles.push(file.name);
+                        console.log(`Skipping duplicate file: ${file.name}`);
+                    } else {
+                        uniqueFiles.push(file);
+                        console.log(`Adding unique file: ${file.name}`);
+                    }
+                });
+
+                // Show notification if duplicates were found
+                if (duplicateFiles.length > 0) {
+                    this.showDuplicateFilesNotification(duplicateFiles);
+                }
+
+                // Process only unique files up to the available slots
+                const filesToProcess = uniqueFiles.slice(0, availableSlots);
+                console.log(`Processing ${filesToProcess.length} unique files (${duplicateFiles.length} duplicates removed)`);
+
+                // Process each file with a slight delay between uploads to prevent race conditions
+                if (filesToProcess.length > 0) {
+                    // Upload the first file immediately
+                    this.uploadFile(filesToProcess[0]);
+
+                    // Upload the rest with a slight delay between each
+                    for (let i = 1; i < filesToProcess.length; i++) {
+                        ((index) => {
+                            setTimeout(() => {
+                                console.log(`Uploading file ${index + 1} of ${filesToProcess.length}`);
+                                this.uploadFile(filesToProcess[index]);
+                            }, index * 300); // 300ms delay between uploads
+                        })(i);
+                    }
+                }
+
+                // Update send button state
+                this.updateSendButtonState();
+            }
+        } catch (error) {
+            console.error('Error in handleFileUpload:', error);
+            this.showToastNotification('Upload Error', 'An error occurred while processing files.', true);
         }
     }
 
@@ -214,74 +232,64 @@ class FileManager {
         }, 5000);
 
         // Show a toast notification as a backup in case the main notification doesn't appear
-        this.showToastNotification('Maximum File Limit', 'You can only upload a maximum of 7 files at a time.');
+        this.showToastNotification('Maximum File Limit', 'You can only upload a maximum of 7 files at a time.', true); // true indicates error
     }
 
     /**
      * Show a simple toast notification
      * @param {string} title - Notification title
      * @param {string} message - Notification message
+     * @param {boolean} isError - Whether this is an error notification
      */
-    showToastNotification(title, message) {
+    showToastNotification(title, message, isError = false) {
         console.log(`Toast notification: ${title} - ${message}`);
 
         // Create toast element
         const toast = document.createElement('div');
-        toast.className = 'toast-notification';
-        toast.innerHTML = `
-            <div class="toast-header">
-                <strong>${title}</strong>
-                <button class="close-toast">×</button>
-            </div>
-            <div class="toast-body">
-                ${message}
-            </div>
-        `;
+        toast.className = 'simple-toast';
 
-        // Style the toast
-        toast.style.position = 'fixed';
-        toast.style.bottom = '20px';
-        toast.style.right = '20px';
-        toast.style.backgroundColor = 'var(--bg-primary)';
-        toast.style.color = 'var(--text-primary)';
-        toast.style.borderRadius = '4px';
-        toast.style.padding = '10px';
-        toast.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
-        toast.style.zIndex = '9999';
-        toast.style.minWidth = '250px';
-        toast.style.opacity = '0';
-        toast.style.transition = 'opacity 0.3s ease';
+        // Add error class if it's an error message
+        if (isError) {
+            toast.classList.add('error');
+        } else {
+            toast.classList.add('success');
+        }
+
+        // Use the title in the message if provided
+        const displayMessage = title ? `${title}: ${message}` : message;
+
+        toast.innerHTML = `
+            ${displayMessage}
+            <button class="toast-close-btn">&times;</button>
+        `;
 
         // Add to document
         document.body.appendChild(toast);
 
-        // Fade in
+        // Animate in
         setTimeout(() => {
-            toast.style.opacity = '1';
+            toast.classList.add('show');
         }, 10);
 
         // Add close button event
-        const closeBtn = toast.querySelector('.close-toast');
-        closeBtn.style.float = 'right';
-        closeBtn.style.cursor = 'pointer';
-        closeBtn.style.background = 'none';
-        closeBtn.style.border = 'none';
-        closeBtn.style.fontSize = '20px';
-        closeBtn.style.marginLeft = '10px';
-
+        const closeBtn = toast.querySelector('.toast-close-btn');
         closeBtn.addEventListener('click', () => {
-            toast.style.opacity = '0';
+            toast.classList.remove('show');
             setTimeout(() => {
-                toast.remove();
+                if (document.body.contains(toast)) {
+                    document.body.removeChild(toast);
+                }
             }, 300);
         });
 
         // Auto-remove after 3 seconds
         setTimeout(() => {
             if (document.body.contains(toast)) {
-                toast.style.opacity = '0';
+                toast.classList.remove('show');
                 setTimeout(() => {
-                    toast.remove();
+                    if (document.body.contains(toast)) {
+                        document.body.removeChild(toast);
+                    }
                 }, 300);
             }
         }, 3000);
@@ -336,7 +344,7 @@ class FileManager {
         }, 5000);
 
         // Show a toast notification as a backup in case the main notification doesn't appear
-        this.showToastNotification('Duplicate Files', `${duplicateFiles.length} duplicate file(s) were not added.`);
+        this.showToastNotification('Duplicate Files', `${duplicateFiles.length} duplicate file(s) were not added.`, true); // true indicates error
     }
 
     /**
@@ -349,9 +357,18 @@ class FileManager {
             const formData = new FormData();
             formData.append('file', file);
 
-            // Add file to UI immediately (optimistic UI)
+            // Generate a unique ID for this file
             const fileId = `file-${Date.now()}-${file.name.replace(/[^a-z0-9]/gi, '-')}`;
+            console.log(`Starting upload for file: ${file.name} with ID: ${fileId}`);
+
+            // Add file to UI immediately (optimistic UI)
             this.addFileToUI(file, fileId, 'uploading');
+
+            // Make sure the input attachments container is visible
+            if (this.inputAttachmentsContainer) {
+                this.inputAttachmentsContainer.style.display = 'flex';
+                console.log('Ensuring input attachments container is visible during upload');
+            }
 
             // Upload file to server
             axios.post('/api/upload-document', formData, {
@@ -360,11 +377,13 @@ class FileManager {
                 }
             })
             .then(response => {
+                console.log(`Server response for ${file.name}:`, response.data);
+
                 // Update file status in UI
                 this.updateFileStatus(fileId, 'success');
 
-                // Add file to internal array
-                this.files.push({
+                // Create file object
+                const fileObj = {
                     id: fileId,
                     file: file,
                     name: file.name,
@@ -372,16 +391,28 @@ class FileManager {
                     extension: file.name.split('.').pop().toLowerCase(),
                     status: 'success',
                     serverData: response.data
-                });
+                };
+
+                // Add file to internal array
+                this.files.push(fileObj);
 
                 console.log(`File uploaded successfully: ${file.name}`);
+                console.log(`Current files in manager after adding: ${this.files.length}`);
+
+                // Log all files for debugging
+                this.files.forEach(f => {
+                    console.log(`- File in array: ${f.name} (ID: ${f.id})`);
+                });
 
                 // Update send button state
                 this.updateSendButtonState();
             })
             .catch(error => {
-                console.error('Upload error:', error);
+                console.error(`Upload error for ${file.name}:`, error);
                 this.updateFileStatus(fileId, 'error');
+
+                // Show error notification
+                this.showToastNotification('Upload Error', `Failed to upload ${file.name}. Please try again.`, true);
 
                 // Remove file from UI after a delay
                 setTimeout(() => {
@@ -390,6 +421,7 @@ class FileManager {
             });
         } catch (error) {
             console.error('Error handling file upload:', error);
+            this.showToastNotification('Upload Error', 'An unexpected error occurred during upload.', true);
         }
     }
 
@@ -477,61 +509,67 @@ class FileManager {
      * @param {string} status - File status (uploading, success, error)
      */
     addFileToUI(file, fileId, status = 'uploading') {
-        // Get file extension and icon
-        const fileExtension = file.name.split('.').pop().toLowerCase();
-        const { icon, color } = this.getFileIconAndColor(fileExtension);
+        try {
+            console.log(`Adding file to UI: ${file.name} (ID: ${fileId}, Status: ${status})`);
 
-        // Create file element for internal tracking (hidden)
-        const fileElement = document.createElement('div');
-        fileElement.className = `file-item ${status}`;
-        fileElement.id = fileId;
-        fileElement.dataset.filename = file.name;
-        // Create file content
-        fileElement.innerHTML = `
-            <div class="file-icon" style="background-color: ${color}">
-                <i class="${icon}"></i>
-            </div>
-            <div class="file-info">
-                <div class="file-name">${file.name}</div>
-                <div class="file-type">${fileExtension.toUpperCase()}</div>
-            </div>
-            <div class="file-actions">
-                <button class="file-preview" title="Preview file">
-                    <i class="fas fa-eye"></i>
-                </button>
-                <button class="file-remove" title="Remove file">
+            // Get file extension and icon
+            const fileExtension = file.name.split('.').pop().toLowerCase();
+            const { icon, color } = this.getFileIconAndColor(fileExtension);
+
+            // Make sure the file display area is hidden (we don't want to show it)
+            if (this.fileDisplayArea) {
+                this.fileDisplayArea.style.display = 'none';
+            }
+
+            // Create file element for internal tracking (hidden)
+            const fileElement = document.createElement('div');
+            fileElement.className = `file-item ${status}`;
+            fileElement.id = fileId;
+            fileElement.dataset.filename = file.name;
+            // Create file content
+            fileElement.innerHTML = `
+                <div class="file-icon" style="background-color: ${color}">
+                    <i class="${icon}"></i>
+                </div>
+                <div class="file-info">
+                    <div class="file-name">${file.name}</div>
+                    <div class="file-type">${fileExtension.toUpperCase()}</div>
+                </div>
+                <div class="file-actions">
+                    <button class="file-preview" title="Preview file">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="file-remove" title="Remove file">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+
+            // Add to file list container (hidden, for internal tracking)
+            if (this.fileListContainer) {
+                this.fileListContainer.appendChild(fileElement);
+                console.log(`Added file element to file list container`);
+            }
+
+            // Create attachment element for input area (visible to user)
+            const attachmentElement = document.createElement('div');
+            attachmentElement.className = `input-attachment ${status}`;
+            attachmentElement.dataset.fileId = fileId;
+            attachmentElement.innerHTML = `
+                <div class="file-icon" style="background-color: ${color}">
+                    <i class="${icon}"></i>
+                </div>
+                <div class="file-info">
+                    <div class="file-name">${file.name}</div>
+                    <div class="file-type">${fileExtension.toUpperCase()}</div>
+                </div>
+                <button class="remove-attachment" title="Remove file">
                     <i class="fas fa-times"></i>
                 </button>
-            </div>
-        `;
+            `;
 
-        // Add to file list container (hidden, for internal tracking)
-        if (this.fileListContainer) {
-            this.fileListContainer.appendChild(fileElement);
-        }
-
-        // Create attachment element for input area (visible to user)
-        const attachmentElement = document.createElement('div');
-        attachmentElement.className = `input-attachment ${status}`;
-        attachmentElement.dataset.fileId = fileId;
-        attachmentElement.innerHTML = `
-            <div class="file-icon" style="background-color: ${color}">
-                <i class="${icon}"></i>
-            </div>
-            <div class="file-info">
-                <div class="file-name">${file.name}</div>
-                <div class="file-type">${fileExtension.toUpperCase()}</div>
-            </div>
-            <button class="remove-attachment" title="Remove file">
-                <i class="fas fa-times"></i>
-            </button>
-        `;
-
-        // Add to input attachments container (visible in input area)
-        if (this.inputAttachmentsContainer) {
-            // Position the input attachments container inside the message input area
-            const userInput = document.getElementById('userInput');
-            if (userInput) {
+            // Add to input attachments container (visible in input area)
+            if (this.inputAttachmentsContainer) {
                 // Make sure the container is positioned correctly
                 this.inputAttachmentsContainer.style.position = 'relative';
                 this.inputAttachmentsContainer.style.zIndex = '10';
@@ -547,27 +585,56 @@ class FileManager {
 
                 // Always ensure the container is visible
                 this.inputAttachmentsContainer.style.display = 'flex';
-                console.log(`Input attachments container now has ${this.inputAttachmentsContainer.children.length} children`);
 
-                // Move the input attachments container inside the input wrapper
-                const inputWrapper = userInput.closest('.input-wrapper');
-                if (inputWrapper) {
-                    // Insert the container before the textarea
-                    inputWrapper.insertBefore(this.inputAttachmentsContainer, userInput);
+                // Count the actual DOM elements
+                const attachmentCount = this.inputAttachmentsContainer.querySelectorAll('.input-attachment').length;
+                console.log(`Input attachments container now has ${attachmentCount} children`);
+
+                // Position the container correctly
+                const userInput = document.getElementById('userInput');
+                if (userInput) {
+                    const inputWrapper = userInput.closest('.input-wrapper');
+                    if (inputWrapper) {
+                        // Insert the container before the textarea
+                        inputWrapper.insertBefore(this.inputAttachmentsContainer, userInput);
+                        console.log('Positioned input attachments container inside input wrapper');
+                    }
                 }
             } else {
-                // Fallback if userInput not found
-                this.inputAttachmentsContainer.appendChild(attachmentElement);
+                console.warn('Input attachments container not found when adding file to UI');
+                // Try to recreate the container
+                this.inputAttachmentsContainer = document.createElement('div');
+                this.inputAttachmentsContainer.id = 'inputAttachmentsContainer';
+                this.inputAttachmentsContainer.className = 'input-attachments-container';
                 this.inputAttachmentsContainer.style.display = 'flex';
-                console.log(`Added attachment element to input attachments container (fallback) for file: ${file.name}`);
-            }
-        } else {
-            console.warn('Input attachments container not found when adding file to UI');
-        }
 
-        // Add event listeners to both elements
-        this.addFileEventListeners(fileElement, fileId);
-        this.addAttachmentEventListeners(attachmentElement, fileId);
+                // Add the attachment to the new container
+                this.inputAttachmentsContainer.appendChild(attachmentElement);
+
+                // Try to position it correctly
+                const userInput = document.getElementById('userInput');
+                if (userInput) {
+                    const inputWrapper = userInput.closest('.input-wrapper');
+                    if (inputWrapper) {
+                        inputWrapper.insertBefore(this.inputAttachmentsContainer, userInput);
+                    } else {
+                        document.body.appendChild(this.inputAttachmentsContainer);
+                    }
+                } else {
+                    document.body.appendChild(this.inputAttachmentsContainer);
+                }
+                console.log('Created new input attachments container as fallback');
+            }
+
+            // Add event listeners to both elements
+            this.addFileEventListeners(fileElement, fileId);
+            this.addAttachmentEventListeners(attachmentElement, fileId);
+
+            console.log(`Successfully added file to UI: ${file.name}`);
+        } catch (error) {
+            console.error('Error adding file to UI:', error);
+            this.showToastNotification('UI Error', 'Error displaying file in the interface.', true);
+        }
     }
 
     /**
@@ -660,27 +727,43 @@ class FileManager {
             return;
         }
 
-        // Find the file before removing it (for logging)
-        const fileToRemove = this.files.find(file => file.id === fileId);
-        if (fileToRemove) {
-            console.log(`Removing file: ${fileToRemove.name} (ID: ${fileId})`);
+        try {
+            // Find the file before removing it (for logging)
+            const fileToRemove = this.files.find(file => file.id === fileId);
+            if (fileToRemove) {
+                console.log(`Removing file: ${fileToRemove.name} (ID: ${fileId})`);
 
-            // Remove from internal array first
-            this.files = this.files.filter(file => file.id !== fileId);
-            console.log(`Files remaining after removal: ${this.files.length}`);
+                // Make a copy of the files array before filtering
+                const filesBefore = [...this.files];
 
-            // Log the remaining files for debugging
-            this.files.forEach(file => {
-                console.log(`Remaining file: ${file.name} (ID: ${file.id})`);
-            });
+                // Remove from internal array
+                this.files = this.files.filter(file => file.id !== fileId);
 
-            // Remove from UI
-            this.removeFileFromUI(fileId);
+                console.log(`Files before removal: ${filesBefore.length}, after removal: ${this.files.length}`);
 
-            // Update send button state based on remaining files and text input
-            this.updateSendButtonState();
-        } else {
-            console.warn(`File with ID ${fileId} not found in internal array`);
+                // Log the remaining files for debugging
+                this.files.forEach(file => {
+                    console.log(`Remaining file: ${file.name} (ID: ${file.id})`);
+                });
+
+                // Remove from UI
+                this.removeFileFromUI(fileId);
+
+                // Update send button state based on remaining files and text input
+                this.updateSendButtonState();
+
+                // Make sure the input attachments container visibility is correct
+                if (this.files.length > 0) {
+                    console.log(`Still have ${this.files.length} files, ensuring container is visible`);
+                    this.inputAttachmentsContainer.style.display = 'flex';
+                } else {
+                    console.log(`No more files in internal array, container will be hidden after animation`);
+                }
+            } else {
+                console.warn(`File with ID ${fileId} not found in internal array`);
+            }
+        } catch (error) {
+            console.error('Error removing file:', error);
         }
     }
 
@@ -718,13 +801,15 @@ class FileManager {
 
             // Remove after animation
             setTimeout(() => {
-                fileElement.remove();
-                console.log(`Removed file element from file list container`);
+                if (fileElement && fileElement.parentNode) {
+                    fileElement.remove();
+                    console.log(`Removed file element from file list container`);
+                }
             }, 300);
         }
 
-        // Remove from input attachments container
-        const attachmentElement = this.inputAttachmentsContainer.querySelector(`[data-file-id="${fileId}"]`);
+        // Remove from input attachments container - use a more specific selector
+        const attachmentElement = this.inputAttachmentsContainer.querySelector(`.input-attachment[data-file-id="${fileId}"]`);
         if (attachmentElement) {
             // Add removal animation
             attachmentElement.style.opacity = '0';
@@ -732,15 +817,21 @@ class FileManager {
 
             // Remove after animation
             setTimeout(() => {
-                attachmentElement.remove();
-                console.log(`Removed attachment element from input attachments container`);
+                if (attachmentElement && attachmentElement.parentNode) {
+                    attachmentElement.remove();
+                    console.log(`Removed attachment element from input attachments container`);
+                }
 
-                // Only hide the container if there are no more files
-                if (this.files.length === 0) {
-                    console.log(`No more files, hiding input attachments container`);
+                // Check the actual DOM elements count, not just the internal array
+                const remainingAttachments = this.inputAttachmentsContainer.querySelectorAll('.input-attachment').length;
+                console.log(`Remaining attachments in DOM: ${remainingAttachments}`);
+
+                // Only hide the container if there are no more attachment elements
+                if (remainingAttachments === 0) {
+                    console.log(`No more attachments in DOM, hiding input attachments container`);
                     this.inputAttachmentsContainer.style.display = 'none';
                 } else {
-                    console.log(`${this.files.length} files remaining, keeping input attachments container visible`);
+                    console.log(`${remainingAttachments} attachments remaining in DOM, keeping input attachments container visible`);
                     // Make sure the container is still visible for remaining files
                     this.inputAttachmentsContainer.style.display = 'flex';
                 }
@@ -956,6 +1047,11 @@ class FileManager {
             this.fileListContainer.innerHTML = '';
         }
 
+        // Make sure the file display area is hidden
+        if (this.fileDisplayArea) {
+            this.fileDisplayArea.style.display = 'none';
+        }
+
         // Update send button state
         this.updateSendButtonState();
 
@@ -1006,6 +1102,11 @@ class FileManager {
             this.inputAttachmentsContainer.style.border = 'none';
             this.inputAttachmentsContainer.style.padding = '0';
             this.inputAttachmentsContainer.style.margin = '0';
+
+            // Make sure the file display area is hidden
+            if (this.fileDisplayArea) {
+                this.fileDisplayArea.style.display = 'none';
+            }
         }, 500);
     }
 
@@ -1076,39 +1177,39 @@ class FileManager {
      */
     getFileIconAndColor(extension) {
         let icon = 'fas fa-file';
-        let color = '#6e6e80'; // Default gray
+        let color = '#6c757d';  // Default gray
 
         switch (extension.toLowerCase()) {
             case 'pdf':
                 icon = 'fas fa-file-pdf';
-                color = '#f56565'; // ChatGPT-style red
+                color = '#dc3545';  // Red
                 break;
             case 'doc':
             case 'docx':
                 icon = 'fas fa-file-word';
-                color = '#4299e1'; // ChatGPT-style blue
+                color = '#0d6efd';  // Blue
                 break;
             case 'xls':
             case 'xlsx':
                 icon = 'fas fa-file-excel';
-                color = '#48bb78'; // ChatGPT-style green
+                color = '#198754';  // Green
                 break;
             case 'ppt':
             case 'pptx':
                 icon = 'fas fa-file-powerpoint';
-                color = '#ed8936'; // ChatGPT-style orange
+                color = '#fd7e14';  // Orange
                 break;
             case 'txt':
                 icon = 'fas fa-file-alt';
-                color = '#6e6e80'; // ChatGPT-style gray
+                color = '#6c757d';  // Gray
                 break;
             case 'md':
-                icon = 'fas fa-file-alt';
-                color = '#9f7aea'; // ChatGPT-style purple
+                icon = 'fab fa-markdown';
+                color = '#6610f2';  // Purple
                 break;
             default:
                 icon = 'fas fa-file';
-                color = '#607d8b'; // Gray
+                color = '#6c757d';  // Gray
         }
 
         return { icon, color };

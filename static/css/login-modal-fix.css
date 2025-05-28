@@ -1,0 +1,163 @@
+/**
+ * Login Modal Width Fix
+ * Increases the width and length of the login modal in the pre-login UI by 30%
+ */
+
+/* Increase the width of the login modal by 30% */
+.modern-login {
+    max-width: 442px !important; /* Increased from 340px by 30% */
+    width: 90% !important;
+}
+
+/* Adjust padding for larger width */
+.modern-login .modal-body {
+    padding: 16px 20px !important;
+    min-height: 260px !important; /* Add minimum height to increase length */
+}
+
+/* Adjust form elements for larger width */
+.modern-login .form-group {
+    margin-bottom: 16px !important;
+}
+
+/* Make sure inputs fit properly with larger size */
+.modern-login .form-control {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    font-size: 16px !important;
+    padding: 10px 12px !important;
+    height: 42px !important; /* Increased height */
+}
+
+/* Adjust button sizes for larger modal */
+.modern-login .btn {
+    padding: 10px 16px !important;
+    font-size: 16px !important;
+}
+
+/* Ensure the modal is centered */
+#loginModal, #registerModal {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Adjust header padding for larger modal */
+.modern-login .modal-header {
+    padding: 12px 20px !important;
+}
+
+/* Adjust header title size for larger modal */
+.modern-login .modal-header h3 {
+    font-size: 18px !important;
+}
+
+/* Adjust footer padding if present */
+.modern-login .modal-footer {
+    padding: 12px 20px !important;
+}
+
+/* Adjust label size for larger modal */
+.modern-login label {
+    font-size: 16px !important;
+    margin-bottom: 6px !important;
+    display: block !important;
+}
+
+/* Ensure password toggle button fits in larger input */
+.modern-login .password-input-wrapper {
+    position: relative !important;
+}
+
+.modern-login .password-toggle-btn {
+    position: absolute !important;
+    right: 10px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    background: none !important;
+    border: none !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 32px !important;
+    height: 32px !important;
+}
+
+.modern-login .password-toggle-btn i {
+    font-size: 18px !important;
+}
+
+/* Adjust forgot password link */
+.modern-login .forgot-password {
+    font-size: 14px !important;
+    margin-top: 4px !important;
+    display: inline-block !important;
+}
+
+/* Adjust login actions */
+.modern-login .login-actions-container {
+    margin-top: 16px !important;
+}
+
+.modern-login .btn-text {
+    font-size: 15px !important;
+}
+
+/* Adjust login message */
+.modern-login .login-message {
+    font-size: 14px !important;
+    padding: 8px !important;
+    margin-bottom: 10px !important;
+}
+
+/* Adjust primary button */
+.modern-login .btn-primary {
+    margin-top: 8px !important;
+    height: 44px !important; /* Taller button */
+}
+
+/* Improve overall appearance for larger modal */
+.modern-login {
+    border-radius: 10px !important;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Add more spacing between elements */
+.modern-login .login-form {
+    padding: 10px 0 !important;
+}
+
+/* Improve input field appearance */
+.modern-login .form-control {
+    border-radius: 6px !important;
+    transition: border-color 0.2s ease-in-out !important;
+}
+
+.modern-login .form-control:focus {
+    border-color: #4285f4 !important;
+    box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2) !important;
+}
+
+/* Improve button appearance */
+.modern-login .btn-primary {
+    border-radius: 6px !important;
+    background-color: #4285f4 !important;
+    border: none !important;
+    font-weight: 500 !important;
+    transition: background-color 0.2s ease-in-out !important;
+}
+
+.modern-login .btn-primary:hover {
+    background-color: #3367d6 !important;
+}
+
+/* Improve close button */
+.modern-login .icon-button {
+    width: 32px !important;
+    height: 32px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}

@@ -197,31 +197,53 @@ def upload_document():
     try:
         # Check if file was uploaded
         if "file" not in request.files:
-            return jsonify({"error": "No file uploaded"}), 400
+            logger.warning("No file found in request")
+            return jsonify({"error": "No file uploaded", "success": False}), 400
 
         file = request.files["file"]
 
         if file.filename == "":
-            return jsonify({"error": "No file selected"}), 400
+            logger.warning("Empty filename in request")
+            return jsonify({"error": "No file selected", "success": False}), 400
+
+        # Log file information
+        logger.info(f"Uploading file: {file.filename}, Content-Type: {file.content_type}, Size: {file.content_length} bytes")
 
         # Save file to raw directory
         raw_dir = Path(app.root_path) / "data" / "raw"
         os.makedirs(raw_dir, exist_ok=True)
 
         file_path = raw_dir / file.filename
+
+        # Check if file already exists
+        if file_path.exists():
+            logger.info(f"File already exists, overwriting: {file_path}")
+
+        # Save the file
         file.save(file_path)
+
+        # Verify file was saved correctly
+        if not file_path.exists():
+            logger.error(f"File was not saved correctly: {file_path}")
+            return jsonify({"error": "File could not be saved", "success": False}), 500
+
+        logger.info(f"File uploaded successfully: {file_path}")
 
         # Return success without processing the file
         # Processing will happen when the user sends a query
         return jsonify({
             "success": True,
             "filename": file.filename,
-            "file_path": str(file_path)
+            "file_path": str(file_path),
+            "file_size": os.path.getsize(file_path)
         })
 
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
         logger.error(f"Error uploading document: {e}")
-        return jsonify({"error": str(e)}), 500
+        logger.error(f"Traceback: {error_trace}")
+        return jsonify({"error": str(e), "success": False}), 500
 
 @app.route("/api/clear-history", methods=["POST"])
 def clear_history():
