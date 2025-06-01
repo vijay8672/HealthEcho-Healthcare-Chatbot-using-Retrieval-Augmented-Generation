@@ -30,6 +30,9 @@ document.addEventListener('DOMContentLoaded', () => {
             sendIcon.style.display = 'block';
         }
         
+        // Make showSendIcon globally accessible
+        window.showSendIcon = showSendIcon;
+        
         // Listen for form submission to show loading icon
         chatForm.addEventListener('submit', () => {
             showLoadingIcon();

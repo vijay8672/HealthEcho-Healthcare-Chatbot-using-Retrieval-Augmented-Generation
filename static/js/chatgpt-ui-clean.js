@@ -27,37 +27,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // Hide slider on homepage only
         hideSliderOnHomepage();
 
-        // Add window resize event listener to ensure chat input stays centered
-        window.addEventListener('resize', () => {
-            // Use setTimeout to ensure this runs after any layout changes
-            setTimeout(() => {
-                const chatInputContainer = document.querySelector('.chat-input-container');
-                const welcomeContainer = document.querySelector('.welcome-container');
-                const greetingContainer = document.getElementById('greetingMessageContainer');
-
-                if (chatInputContainer) {
-                    if (welcomeContainer || (greetingContainer && greetingContainer.style.display !== 'none')) {
-                        // If welcome container or greeting is visible, position input box below it
-                        chatInputContainer.style.left = '50%';
-                        chatInputContainer.style.transform = 'translate(-50%, -50%)';
-                        chatInputContainer.style.marginLeft = '0';
-                        chatInputContainer.style.right = 'auto';
-                        chatInputContainer.style.bottom = 'auto';
-                        chatInputContainer.style.top = '65%';
-                    } else {
-                        // Otherwise, position at bottom
-                        chatInputContainer.style.left = '50%';
-                        chatInputContainer.style.transform = 'translate(-50%, 0)';
-                        chatInputContainer.style.marginLeft = '0';
-                        chatInputContainer.style.right = 'auto';
-                        chatInputContainer.style.bottom = '24px';
-                        chatInputContainer.style.top = 'auto';
-                    }
-                }
-            }, 100);
-        });
-
         console.log('ChatGPT-style UI initialized');
+        // Ensure initial chat input position is correct
+        // Removed dynamic positioning logic as CSS now handles fixed positioning
+        // if (typeof ensureChatInputCentered === 'function') {
+        //     ensureChatInputCentered();
+        // }
     } catch (error) {
         console.error('Error during initialization:', error);
     }
@@ -162,36 +137,36 @@ function setupAllEventListeners() {
                 localStorage.setItem('sidebarCollapsed', !isCollapsed);
 
                 // Ensure chat input container stays centered
-                ensureChatInputCentered();
+                // Removed dynamic positioning logic as CSS now handles fixed positioning
+                // ensureChatInputCentered();
             }
         }
 
-        // Function to ensure chat input stays centered
-        function ensureChatInputCentered() {
-            const chatInputContainer = document.querySelector('.chat-input-container');
-            const welcomeContainer = document.querySelector('.welcome-container');
-            const greetingContainer = document.getElementById('greetingMessageContainer');
+        // Removed the ensureChatInputCentered function as it's no longer needed
+        // function ensureChatInputCentered() {
+        //     const chatInputContainer = document.querySelector('.chat-input-container');
+        //     const welcomeContainer = document.querySelector('.welcome-container');
+        //     const greetingContainer = document.getElementById('greetingMessageContainer');
 
-            if (chatInputContainer) {
-                if (welcomeContainer || (greetingContainer && greetingContainer.style.display !== 'none')) {
-                    // If welcome container or greeting is visible, position input box below it
-                    chatInputContainer.style.left = '50%';
-                    chatInputContainer.style.transform = 'translate(-50%, -50%)';
-                    chatInputContainer.style.bottom = 'auto';
-                    chatInputContainer.style.top = '65%';
-                } else {
-                    // Otherwise, position at bottom
-                    chatInputContainer.style.left = '50%';
-                    chatInputContainer.style.transform = 'translate(-50%, 0)';
-                    chatInputContainer.style.bottom = '24px';
-                    chatInputContainer.style.top = 'auto';
-                }
-
-                // Common styles
-                chatInputContainer.style.marginLeft = '0';
-                chatInputContainer.style.right = 'auto';
-            }
-        }
+        //     if (chatInputContainer) {
+        //         if (welcomeContainer || (greetingContainer && greetingContainer.style.display !== 'none')) {
+        //             // If welcome container or greeting is visible, position input box below it
+        //             chatInputContainer.style.left = '50%';
+        //             chatInputContainer.style.transform = 'translate(-50%, -50%)';
+        //             chatInputContainer.style.bottom = 'auto';
+        //             chatInputContainer.style.top = '65%';
+        //         } else {
+        //             // Otherwise, position at bottom
+        //             chatInputContainer.style.left = '50%';
+        //             chatInputContainer.style.transform = 'translate(-50%, 0)';
+        //             chatInputContainer.style.bottom = '24px';
+        //             chatInputContainer.style.top = 'auto';
+        //         }
+        //         // Common styles
+        //         chatInputContainer.style.marginLeft = '0';
+        //         chatInputContainer.style.right = 'auto';
+        //     }
+        // }
 
         // Sidebar toggle button
         if (elements.toggleSidebar) {
@@ -232,7 +207,8 @@ function setupAllEventListeners() {
             }
 
             // Ensure chat input is centered regardless of sidebar state
-            ensureChatInputCentered();
+            // Removed dynamic positioning logic as CSS now handles fixed positioning
+            // ensureChatInputCentered();
         }
 
         // Theme toggle function
@@ -1087,6 +1063,7 @@ function simulateBotResponse(userMessage) {
 // Show typing indicator
 function showTypingIndicator() {
     try {
+        console.log('showTypingIndicator called');
         const typingIndicator = document.createElement('div');
         typingIndicator.className = 'message bot-message typing-indicator';
         typingIndicator.id = 'typingIndicator';
@@ -1165,6 +1142,12 @@ function loadChat(chatId) {
     try {
         console.log(`Loading chat ID: ${chatId}`);
 
+        // Check if the chat is already loaded by app-integration.js
+        if (window.currentChatId === chatId) {
+            console.log(`Chat ID ${chatId} already loaded by app-integration.js, skipping loadChat in chatgpt-ui-clean.js`);
+            return;
+        }
+
         if (!elements.chatMessages) {
             console.error('Chat messages container not found');
             return;
@@ -1172,6 +1155,12 @@ function loadChat(chatId) {
 
         // Clear UI
         elements.chatMessages.innerHTML = '';
+
+        // Explicitly remove any existing typing indicator or loading state
+        const existingTypingIndicator = document.getElementById('typingIndicator');
+        if (existingTypingIndicator) {
+            existingTypingIndicator.remove();
+        }
 
         // Get saved chats from localStorage
         let savedChats = JSON.parse(localStorage.getItem('ziahr_chats') || '[]');
@@ -1205,12 +1194,17 @@ function loadChat(chatId) {
         }
 
         console.log(`Chat ID ${chatId} loaded successfully`);
+
+        // Ensure send icon is shown after loading chat
+        if (window.showSendIcon && typeof window.showSendIcon === 'function') {
+            window.showSendIcon();
+        }
     } catch (error) {
         console.error('Error loading chat:', error);
+        // Add more detailed logging
+        console.error('Detailed error loading chat:', error.message, error.stack);
     }
 }
-
-
 
 // Setup chat search functionality
 function setupChatSearch() {
@@ -1431,3 +1425,6 @@ function updateMessageInChat(messageId, newMessage) {
         console.error('Error updating message in chat:', error);
     }
 }
+
+// Make ensureChatInputCentered globally available
+window.ensureChatInputCentered = ensureChatInputCentered;

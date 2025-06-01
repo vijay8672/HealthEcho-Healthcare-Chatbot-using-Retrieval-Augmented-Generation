@@ -195,6 +195,10 @@
                             <button type="button" id="voiceInputBtn" class="action-btn" title="Voice Input">
                                 <i class="fas fa-microphone"></i>
                             </button>
+                            <!-- Placeholder for the inline escalation icon -->
+                            <div id="inlineEscalationIconContainer" class="icon-button" style="display: none;" title="Escalate to HR">
+                                <i class="fas fa-exclamation-circle" style="color: #dc3545;"></i>
+                            </div>
                         </div>
                         <div class="right-actions">
                             <button type="submit" id="sendBtn" class="send-btn" title="Send message" disabled>
@@ -341,15 +345,15 @@
             <div class="modal-body">
                 <div class="login-form">
                     <div class="form-group">
-                        <label for="fullName">Full Name</label>
+                        <label for="fullName">Full Name<span class="required">*</span></label>
                         <input type="text" id="fullName" class="form-control" placeholder="Enter your full name">
                     </div>
                     <div class="form-group">
-                        <label for="registerEmail">Email Address</label>
+                        <label for="registerEmail">Email Address<span class="required">*</span></label>
                         <input type="email" id="registerEmail" class="form-control" placeholder="Enter your email">
                     </div>
                     <div class="form-group">
-                        <label for="registerPassword">Password</label>
+                        <label for="registerPassword">Password<span class="required">*</span></label>
                         <div class="password-input-wrapper">
                             <input type="password" id="registerPassword" class="form-control" placeholder="Create a password">
                             <button type="button" class="password-toggle-btn" tabindex="-1">
@@ -358,8 +362,8 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label for="companyName">Company Name</label>
-                        <input type="text" id="companyName" class="form-control" placeholder="Enter your company name">
+                        <label for="employeeId">Employee ID</label>
+                        <input type="text" id="employeeId" class="form-control" placeholder="Enter your employee ID (Optional)">
                     </div>
                     <div id="registerMessage" class="login-message" style="display: none;"></div>
                     <button id="submitRegister" class="btn btn-primary btn-block">Create Account</button>
@@ -391,6 +395,9 @@
                         </div>
                         <div class="settings-nav-item" data-tab="security">
                             <i class="fas fa-shield-alt"></i> Security
+                        </div>
+                        <div class="settings-nav-item" data-tab="personal">
+                            <i class="fas fa-user"></i> Personal
                         </div>
                     </div>
                     <div class="settings-content">
@@ -471,23 +478,38 @@
                                 <p>Log out of all active sessions across all devices, including your current session. It may take up to 30 minutes for other devices to be logged out.</p>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-
-
-                    <!-- Archived Chats Tab (Hidden but kept for functionality) -->
-                    <div class="settings-panel" id="archived-chats-panel">
-                        <div class="settings-section">
-                            <h4>Archived Conversations</h4>
-                            <div class="archived-chats-container" id="archivedChatsContainer">
-                                <div class="no-archived-chats">No archived chats found</div>
+                        <!-- Personal Settings Tab -->
+                        <div class="settings-panel" id="personal-panel">
+                            <div class="settings-section">
+                                <h4>Personal Information</h4>
+                                <div class="settings-item">
+                                    <div class="settings-item-left">Full Name</div>
+                                    <div class="settings-item-right">
+                                        <input type="text" id="personalFullName" class="form-control" placeholder="Enter your full name">
+                                    </div>
+                                </div>
+                                <div class="settings-item">
+                                    <div class="settings-item-left">Email Address</div>
+                                    <div class="settings-item-right">
+                                        <input type="email" id="personalEmail" class="form-control" placeholder="Enter your email">
+                                    </div>
+                                </div>
+                                <div class="settings-item">
+                                    <div class="settings-item-left">Employee ID</div>
+                                    <div class="settings-item-right">
+                                        <input type="text" id="personalEmployeeId" class="form-control" placeholder="Enter your employee ID">
+                                    </div>
+                                </div>
                             </div>
+                            <!-- Add more personal settings fields here if needed -->
                         </div>
                     </div>
                 </div>
             </div>
-            <!-- Modal footer removed as requested -->
+            <div class="modal-footer">
+                <button id="saveSettingsBtn" class="btn btn-primary">Save Changes</button>
+            </div>
         </div>
     </div>
 
@@ -515,6 +537,15 @@
             <!-- Modal footer removed as requested -->
         </div>
     </div>
+
+    <!-- Include the escalation form template -->
+    {% include 'escalation_form.html' %}
+
+    <!-- Add the escalation manager script -->
+    <script src="{{ url_for('static', filename='js/escalation-manager.js') }}"></script>
+
+    <!-- Add Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 
     <script src="{{ url_for('static', filename='js/toast-notifications.js') }}"></script>
     <script src="{{ url_for('static', filename='js/chatgpt-ui-clean.js') }}"></script>

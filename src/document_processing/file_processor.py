@@ -3,7 +3,8 @@ Process different file types for document ingestion.
 """
 import os
 import re
-from typing import List, Dict, Any, Optional
+import unicodedata
+from typing import Dict, Any
 from pathlib import Path
 
 # Handle optional dependencies gracefully
@@ -31,167 +32,127 @@ logger = get_logger(__name__)
 class FileProcessor:
     """Process different file types for text extraction."""
 
+    SUPPORTED_EXTENSIONS = {'.pdf', '.docx', '.txt', '.md'}
+    MAX_FILE_SIZE_MB = 20
+
     @staticmethod
     def process_file(file_path: Path) -> Dict[str, Any]:
-        """
-        Process a file and extract its text content.
-
-        Args:
-            file_path: Path to the file
-
-        Returns:
-            Dictionary with file metadata and content
-        """
-        if not os.path.exists(file_path):
+        """Main interface to process file content and metadata."""
+        if not file_path.exists():
             logger.error(f"File not found: {file_path}")
-            # Return a minimal document with error message instead of raising an exception
-            return {
-                "title": f"Missing File: {file_path.name}",
-                "content": f"[FILE NOT FOUND: {file_path}]",
-                "source_file": str(file_path),
-                "file_type": "error"
-            }
+            return FileProcessor._error_doc(file_path, "FILE NOT FOUND")
+
+        if file_path.stat().st_size > FileProcessor.MAX_FILE_SIZE_MB * 1024 * 1024:
+            logger.warning(f"File too large: {file_path.name}")
+            return FileProcessor._error_doc(file_path, "FILE TOO LARGE")
 
         file_extension = file_path.suffix.lower()
         file_name = file_path.name
+        title = FileProcessor._generate_title(file_name, file_extension)
 
-        # Create title from filename
-        title = file_name.replace(file_extension, '').replace('-', ' ').replace('_', ' ')
-        title = re.sub(r'\s+', ' ', title).strip().title()
+        handler = FileProcessor._get_handler(file_extension)
 
         try:
-            # Process based on file extension
-            if file_extension == '.pdf':
-                content = FileProcessor.extract_from_pdf(file_path)
-            elif file_extension == '.docx':
-                content = FileProcessor.extract_from_docx(file_path)
-            elif file_extension == '.txt':
-                content = FileProcessor.extract_from_txt(file_path)
-            elif file_extension == '.md':
-                content = FileProcessor.extract_from_markdown(file_path)
-            else:
-                logger.warning(f"Unsupported file type: {file_extension}, treating as text")
-                # Try to process as text anyway
-                content = FileProcessor.extract_from_txt(file_path)
-
-            # Check if we got any content
-            if not content or len(content.strip()) == 0:
+            content = handler(file_path)
+            content = unicodedata.normalize('NFKC', content or "").strip()
+            if not content:
                 content = f"[EMPTY CONTENT: {file_path.name}]"
                 logger.warning(f"Empty content extracted from {file_path}")
+            elif len(content) < 50:
+                logger.warning(f"Very short content extracted from {file_path} ({len(content)} characters)")
 
-            logger.info(f"Processed file: {file_name}, extracted {len(content)} characters")
-
+            logger.info(f"Processed {file_extension.upper()} file: {file_name} ({len(content)} characters)")
             return {
                 "title": title,
                 "content": content,
                 "source_file": str(file_path),
-                "file_type": file_extension[1:] if file_extension.startswith('.') else file_extension
+                "file_type": file_extension.lstrip('.')
             }
 
         except Exception as e:
             logger.error(f"Error processing file {file_path}: {e}")
-            # Return a document with error message instead of raising an exception
-            return {
-                "title": f"Error Processing: {title}",
-                "content": f"[ERROR PROCESSING FILE: {file_path.name}] - {str(e)}",
-                "source_file": str(file_path),
-                "file_type": "error"
-            }
+            return FileProcessor._error_doc(file_path, str(e), title)
+
+    @staticmethod
+    def _get_handler(extension: str):
+        return {
+            '.pdf': FileProcessor.extract_from_pdf,
+            '.docx': FileProcessor.extract_from_docx,
+            '.txt': FileProcessor.extract_from_txt,
+            '.md': FileProcessor.extract_from_markdown
+        }.get(extension, FileProcessor.extract_from_txt)
+
+    @staticmethod
+    def _generate_title(file_name: str, file_extension: str) -> str:
+        title = file_name.replace(file_extension, '').replace('-', ' ').replace('_', ' ')
+        return re.sub(r'\s+', ' ', title).strip().title()
+
+    @staticmethod
+    def _error_doc(file_path: Path, error: str, title: str = None) -> Dict[str, Any]:
+        return {
+            "title": title or f"Error: {file_path.name}",
+            "content": f"[{error}: {file_path.name}]",
+            "source_file": str(file_path),
+            "file_type": "error"
+        }
 
     @staticmethod
     def extract_from_pdf(file_path: Path) -> str:
-        """Extract text from a PDF file."""
         if fitz is None:
-            logger.warning("PyMuPDF (fitz) module not installed. Cannot process PDF files.")
+            logger.warning("PyMuPDF not installed.")
             return f"[PDF PROCESSING NOT AVAILABLE - Please install PyMuPDF to process {file_path.name}]"
 
-        text = ""
         try:
-            # Open the PDF
             with fitz.open(file_path) as pdf:
-                # Iterate through pages
-                for page in pdf:
-                    text += page.get_text()
-
-            # Clean up text
-            text = re.sub(r'\s+', ' ', text).strip()
-            return text
-
+                text = " ".join(page.get_text() for page in pdf)
+            return re.sub(r'\s+', ' ', text)
         except Exception as e:
-            logger.error(f"Error extracting text from PDF {file_path}: {e}")
-            # Return a fallback message instead of raising an exception
-            return f"[ERROR PROCESSING PDF: {str(e)}]"
+            logger.error(f"Error reading PDF {file_path}: {e}")
+            return f"[ERROR PROCESSING PDF: {e}]"
 
     @staticmethod
     def extract_from_docx(file_path: Path) -> str:
-        """Extract text from a DOCX file."""
         if docx is None:
-            logger.warning("python-docx module not installed. Cannot process DOCX files.")
+            logger.warning("python-docx not installed.")
             return f"[DOCX PROCESSING NOT AVAILABLE - Please install python-docx to process {file_path.name}]"
 
         try:
-            doc = docx.Document(file_path)
-            text = "\n".join([paragraph.text for paragraph in doc.paragraphs])
-            return text
-
+            document = docx.Document(file_path)
+            return "\n".join(paragraph.text for paragraph in document.paragraphs)
         except Exception as e:
-            logger.error(f"Error extracting text from DOCX {file_path}: {e}")
-            # Return a fallback message instead of raising an exception
-            return f"[ERROR PROCESSING DOCX: {str(e)}]"
+            logger.error(f"Error reading DOCX {file_path}: {e}")
+            return f"[ERROR PROCESSING DOCX: {e}]"
 
     @staticmethod
     def extract_from_txt(file_path: Path) -> str:
-        """Extract text from a TXT file."""
+        encodings = ['utf-8', 'latin-1', 'cp1252', 'iso-8859-1']
         try:
-            # Try UTF-8 first
-            try:
-                with open(file_path, 'r', encoding='utf-8') as file:
-                    return file.read()
-            except UnicodeDecodeError:
-                # Fall back to other encodings if UTF-8 fails
-                for encoding in ['latin-1', 'cp1252', 'iso-8859-1']:
-                    try:
-                        with open(file_path, 'r', encoding=encoding) as file:
-                            logger.info(f"Successfully read {file_path} with {encoding} encoding")
-                            return file.read()
-                    except UnicodeDecodeError:
-                        continue
-
-                # If all encodings fail, use binary mode and decode as much as possible
-                with open(file_path, 'rb') as file:
-                    binary_data = file.read()
-                    # Try to decode with errors='replace' to substitute invalid chars
-                    text = binary_data.decode('utf-8', errors='replace')
-                    logger.warning(f"Used fallback binary reading for {file_path}")
-                    return text
-
+            for enc in encodings:
+                try:
+                    with open(file_path, 'r', encoding=enc) as f:
+                        logger.info(f"Successfully read {file_path} with {enc} encoding")
+                        return f.read()
+                except UnicodeDecodeError:
+                    continue
+            with open(file_path, 'rb') as f:
+                return f.read().decode('utf-8', errors='replace')
         except Exception as e:
-            logger.error(f"Error extracting text from TXT {file_path}: {e}")
-            # Return a fallback message instead of raising an exception
-            return f"[ERROR PROCESSING TEXT FILE: {str(e)}]"
+            logger.error(f"Error reading TXT {file_path}: {e}")
+            return f"[ERROR PROCESSING TEXT FILE: {e}]"
 
     @staticmethod
     def extract_from_markdown(file_path: Path) -> str:
-        """Extract text from a Markdown file."""
         try:
-            with open(file_path, 'r', encoding='utf-8') as file:
-                md_text = file.read()
+            with open(file_path, 'r', encoding='utf-8') as f:
+                md_text = f.read()
 
             if not markdown_available:
-                logger.warning("markdown and/or BeautifulSoup modules not installed. Using raw markdown text.")
-                # Just return the raw markdown text if we can't process it
+                logger.warning("Markdown/BeautifulSoup not installed. Returning raw markdown.")
                 return md_text
 
-            # Convert markdown to HTML
             html = markdown.markdown(md_text)
-
-            # Extract text from HTML
             soup = BeautifulSoup(html, 'html.parser')
-            text = soup.get_text()
-
-            return text
-
+            return soup.get_text()
         except Exception as e:
-            logger.error(f"Error extracting text from Markdown {file_path}: {e}")
-            # Return a fallback message instead of raising an exception
-            return f"[ERROR PROCESSING MARKDOWN: {str(e)}]"
+            logger.error(f"Error reading Markdown {file_path}: {e}")
+            return f"[ERROR PROCESSING MARKDOWN: {e}]"

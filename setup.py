@@ -1,0 +1,29 @@
+from setuptools import setup, find_packages
+
+setup(
+    name="multi-model-rag-chatbot",
+    version="0.1.0",
+    packages=find_packages(),
+    install_requires=[
+        "langchain",
+        "faiss-cpu",
+        "sentence-transformers",
+        "python-dotenv",
+        "groq",
+        "anthropic",
+        "openai",
+        "tiktoken",
+        "pypdf",
+        "python-docx",
+        "beautifulsoup4",
+        "markdown",
+        "pytest",
+        "pytest-cov",
+        "black",
+        "isort",
+        "flake8",
+        "mypy",
+        "pre-commit",
+    ],
+    python_requires=">=3.8",
+) 

@@ -154,14 +154,22 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log(`Found chat ID in URL: ${chatIdFromUrl}`);
             // Load the chat from the URL parameter
             loadChatFromUrl(chatIdFromUrl);
+
+            // Skip the rest of the initial setup that might clear the chat or show welcome message
+            console.log('Skipping default initial UI setup due to chatId in URL');
+            return;
         }
 
-        // Initialize greeting message if user is logged in
+        // Initialize greeting message if user is logged in (only if no chat ID in URL)
         try {
             const userData = JSON.parse(localStorage.getItem('user_data') || 'null');
             if (userData && typeof window.updateGreetingMessage === 'function') {
                 console.log('User is logged in, initializing greeting message');
                 window.updateGreetingMessage(userData);
+                console.log('Greeting message shown for new chat');
+                if (typeof window.ensureChatInputCentered === 'function') {
+                    window.ensureChatInputCentered();
+                }
             }
         } catch (error) {
             console.error('Error initializing greeting message:', error);
@@ -170,6 +178,12 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('ZiaHR app integration initialized');
     } catch (error) {
         console.error('Error initializing app integration:', error);
+    }
+
+    // Ensure chatMessages still has relative position if needed for other elements
+    const chatMessages = document.getElementById('chatMessages');
+    if (chatMessages) {
+        chatMessages.style.position = 'relative';
     }
 });
 
@@ -188,6 +202,9 @@ function handleChatSubmit(e) {
     e.preventDefault();
 
     try {
+        // Synchronize local currentChatId with the global window variable
+        currentChatId = window.currentChatId;
+
         // Stop any ongoing speech
         stopAllSpeech();
 
@@ -200,6 +217,38 @@ function handleChatSubmit(e) {
         // Check if we have a message (files alone are not enough)
         if (message) {
             console.log(`Submitting message: ${message}${files.length > 0 ? ' with ' + files.length + ' files' : ''}`);
+            console.log(`currentChatId in handleChatSubmit before check: ${currentChatId}`);
+
+            // If no current chat ID, create one
+            if (!currentChatId) {
+                currentChatId = 'chat_' + Date.now();
+                window.currentChatId = currentChatId;
+                console.log(`Generated new chat ID for first message: ${currentChatId}`);
+
+                // Get existing chats
+                let savedChats = JSON.parse(localStorage.getItem('ziahr_chats') || '[]');
+
+                // Remove any empty chats (chats with no messages and title "New Chat")
+                savedChats = savedChats.filter(chat => {
+                    if (chat.title === 'New Chat' && (!chat.messages || chat.messages.length === 0)) {
+                        console.log(`Removing empty chat with ID ${chat.id}`);
+                        return false;
+                    }
+                    return true;
+                });
+
+                // Save back to localStorage (without adding a new empty chat)
+                localStorage.setItem('ziahr_chats', JSON.stringify(savedChats));
+                console.log(`Removed empty chats from localStorage for first message`);
+
+                // Update URL with the new chat ID
+                const url = new URL(window.location.href);
+                url.searchParams.set('chat', currentChatId);
+                window.history.pushState({}, '', url);
+
+                // Call loadSavedChats to refresh the sidebar with the new chat
+                loadSavedChats();
+            }
 
             // Add user message to UI
             // Create a timestamp for this message
@@ -218,6 +267,9 @@ function handleChatSubmit(e) {
             if (window.fileManager && files.length > 0) {
                 window.fileManager.lockFiles();
             }
+
+            // Save chat and update timestamp since a new message was sent
+            saveCurrentChat(true);
         }
     } catch (error) {
         console.error('Error handling chat submit:', error);
@@ -283,15 +335,6 @@ function handleSuggestion(text) {
 // Add message to UI
 function addMessageToUI(type, message, messageId = null, timestamp = null) {
     try {
-        // Hide the greeting message when a user or bot message is added
-        // But only if we're not in the process of starting a new chat
-        if ((type === 'user' || type === 'bot') && !window.isStartingNewChat) {
-            if (typeof window.hideGreetingMessage === 'function') {
-                window.hideGreetingMessage();
-                console.log('Greeting message hidden when user/bot message is added');
-            }
-        }
-
         // Remove all welcome containers if they exist (there might be duplicates)
         const welcomeContainers = document.querySelectorAll('.welcome-container');
         if (welcomeContainers.length > 0) {
@@ -482,113 +525,51 @@ function addMessageToUI(type, message, messageId = null, timestamp = null) {
             // Add content and footer to message
             messageElement.appendChild(contentElement);
             messageElement.appendChild(footerElement);
-        } else {
-            // Only add the text content if there's a message
-            if (message) {
-                contentElement.textContent = message;
-                messageElement.appendChild(contentElement);
 
-                // Add footer with timestamp for user messages
-                const footerElement = document.createElement('div');
-                footerElement.className = 'message-footer';
+        } else { // User message
+            contentElement.textContent = message;
+            messageElement.appendChild(contentElement);
 
-                // Add timestamp - use provided timestamp if available
-                const timeElement = document.createElement('span');
-                timeElement.className = 'message-time';
-                if (timestamp) {
-                    const messageDate = new Date(timestamp);
-                    timeElement.textContent = messageDate.toLocaleTimeString();
-                } else {
-                    timeElement.textContent = new Date().toLocaleTimeString();
-                }
-
-                const timeContainer = document.createElement('div');
-                timeContainer.className = 'time-container';
-                timeContainer.appendChild(timeElement);
-                footerElement.appendChild(timeContainer);
-                messageElement.appendChild(footerElement);
+            // Add timestamp to user message
+            const footerElement = document.createElement('div');
+            footerElement.className = 'message-footer';
+            const timeElement = document.createElement('span');
+            timeElement.className = 'message-time';
+            if (timestamp) {
+                const messageDate = new Date(timestamp);
+                timeElement.textContent = messageDate.toLocaleTimeString();
+            } else {
+                timeElement.textContent = new Date().toLocaleTimeString();
             }
+            footerElement.appendChild(timeElement);
+            messageElement.appendChild(footerElement);
+        }
 
-            // If there are files, add them to the user message in ChatGPT style
-            if (window.fileManager && window.fileManager.getFiles().length > 0) {
-                const files = window.fileManager.getFiles();
-                if (files.length > 0) {
-                    // If there's no message content yet, create an empty one
-                    if (!contentElement.textContent) {
-                        contentElement.textContent = ''; // Empty string instead of "hello"
-                        messageElement.appendChild(contentElement);
-                    }
+        elements.chatMessages.appendChild(messageElement);
+        elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
 
-                    const fileListElement = document.createElement('div');
-                    fileListElement.className = 'message-files';
+        // Add to chat log (This happens after appending the message)
+        chatLog.push({ type, message, messageId, sources: [], timestamp: timestamp || new Date().toISOString() });
 
-                    const fileItems = document.createElement('div');
-                    fileItems.className = 'file-items';
-
-                    // Create a compact horizontal layout for files
-                    files.forEach(file => {
-                        const fileItem = document.createElement('div');
-                        fileItem.className = 'message-file-item';
-                        const { icon, color } = window.fileManager.getFileIconAndColor(file.extension);
-
-                        // Create file item with ChatGPT-style appearance
-                        fileItem.innerHTML = `
-                            <div class="file-icon" style="background-color: ${color}">
-                                <i class="${icon}"></i>
-                            </div>
-                            <div class="file-info">
-                                <div class="file-name">${file.name}</div>
-                                <div class="file-type">${file.extension.toUpperCase()}</div>
-                            </div>
-                        `;
-
-                        fileItem.addEventListener('click', () => {
-                            // Find the file in the file manager and preview it
-                            const fileObj = window.fileManager.files.find(f => f.name === file.name);
-                            if (fileObj) {
-                                window.fileManager.previewFile(fileObj);
-                            }
-                        });
-
-                        fileItems.appendChild(fileItem);
-                    });
-
-                    fileListElement.appendChild(fileItems);
-                    messageElement.appendChild(fileListElement);
-
-                    // We'll let the API response handle the confirmation message
-                    // No need to add a separate confirmation message here
-                }
+        // Hide the greeting message AFTER the message has been added to the DOM
+        // But only if we're not in the process of starting a new chat
+        if ((type === 'user' || type === 'bot') && !window.isStartingNewChat) {
+            if (typeof window.hideGreetingMessage === 'function') {
+                window.hideGreetingMessage();
+                console.log('Greeting message hidden when user/bot message is added');
             }
         }
 
-        const chatMessages = document.getElementById('chatMessages');
-        if (chatMessages) {
-            chatMessages.appendChild(messageElement);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
+        // Reposition the chat input to the bottom when messages are present
+        // Removed dynamic positioning logic as CSS now handles fixed positioning
+        // const chatInputContainer = document.querySelector('.chat-input-container');
+        // if (chatInputContainer) {
+        //     chatInputContainer.style.top = 'auto';
+        //     chatInputContainer.style.bottom = '24px';
+        //     chatInputContainer.style.transform = 'translate(-50%, 0)';
+        // }
 
-        // If we have a current chat ID, save the chat after adding a message
-        if (currentChatId || document.querySelectorAll('.message').length > 1) {
-            // Use setTimeout to allow the UI to update first
-            setTimeout(() => {
-                // Get the chat from history to preserve its timestamp
-                const existingChat = chatHistory.find(c => c.id === currentChatId);
-                if (existingChat && existingChat.timestamp) {
-                    // Store the original timestamp to ensure it's preserved when saving
-                    window.originalChatTimestamp = existingChat.timestamp;
-                }
-                saveCurrentChat();
-            }, 100);
-        } else if (type === 'user') {
-            // If this is the first message in a new chat, generate a new chat ID
-            currentChatId = 'chat_' + Date.now();
-            window.currentChatId = currentChatId;
-            // For new chats, we don't have an original timestamp
-            window.originalChatTimestamp = null;
-        }
-
-        console.log(`Added ${type} message to UI${messageId ? ' with ID ' + messageId : ''}`);
+        console.log(`Added ${type} message to UI`);
     } catch (error) {
         console.error('Error adding message to UI:', error);
     }
@@ -722,8 +703,12 @@ function handleBotResponse(userMessage) {
             // Don't show sources panel
             // Sources are disabled as per user request
 
+            // Call loadSavedChats to refresh the sidebar after interaction is saved
+            loadSavedChats();
+
             // Handle text-to-speech if enabled
-            if (document.getElementById('voiceToggle').checked && data.audio_url) {
+            const voiceToggle = document.getElementById('voiceToggle');
+            if (voiceToggle && voiceToggle.checked && data.audio_url) {
                 playAudio(data.audio_url);
             }
         })
@@ -1202,6 +1187,9 @@ function handleStartNewChat() {
     try {
         console.log('handleStartNewChat called in app-integration.js');
 
+        // Explicitly set local currentChatId to null to ensure a new chat is created on the next message
+        currentChatId = null;
+
         // Use the centralized handler if available
         if (window.newChatHandler && typeof window.newChatHandler.startNewChat === 'function') {
             console.log('Delegating to centralized new chat handler');
@@ -1286,19 +1274,22 @@ function handleStartNewChat() {
             if (userData && typeof window.updateGreetingMessage === 'function') {
                 window.updateGreetingMessage(userData);
                 console.log('Greeting message shown for new chat');
+                if (typeof window.ensureChatInputCentered === 'function') {
+                    window.ensureChatInputCentered();
+                }
             }
 
             // Add only the welcome message (not a duplicate input container)
             chatMessages.innerHTML = `
                 <div class="welcome-container">
                     <div class="welcome-message">
-                        <h2>👋 Welcome to ZiaHR</h2>
+                        <h2>Welcome to HR Assistant</h2>
                         <p>I can help you with questions about company policies, employee guidelines, and HR procedures.</p>
                         <div class="suggestion-chips">
-                            <button class="suggestion-chip">🗓️ Leave Policy</button>
-                            <button class="suggestion-chip">👥 Referral Program</button>
-                            <button class="suggestion-chip">👔 Dress Code</button>
-                            <button class="suggestion-chip">🏠 Work from Home</button>
+                            <button class="suggestion-chip">Leave Policy</button>
+                            <button class="suggestion-chip">Referral Program</button>
+                            <button class="suggestion-chip">Dress Code</button>
+                            <button class="suggestion-chip">Work from Home</button>
                         </div>
                     </div>
                 </div>
@@ -1354,157 +1345,75 @@ function handleStartNewChat() {
     }
 }
 
-// Save current chat to localStorage
-function saveCurrentChat() {
+// Save the current chat to localStorage
+function saveCurrentChat(updateTimestamp = false) {
     try {
-        console.log(`Saving current chat with ID: ${currentChatId || 'undefined'}`);
-
-        // If no current chat ID, generate one
+        console.log('saveCurrentChat called');
         if (!currentChatId) {
-            currentChatId = 'chat_' + Date.now();
-            window.currentChatId = currentChatId;
-            console.log(`Generated new chat ID: ${currentChatId}`);
+            console.log('No current chat to save');
+            return;
         }
+
+        console.log(`Saving current chat with ID: ${currentChatId}`);
 
         // Get all messages from the UI
         const messages = document.querySelectorAll('.message');
-
-        // Create chat object
-        const chatMessages = [];
-
-        // If there are messages, collect them
-        if (messages.length > 0) {
-            messages.forEach(message => {
-                const isUser = message.classList.contains('user-message');
-                const messageContent = message.querySelector('.message-content');
-
-                if (messageContent) {
-                    // Try to get the timestamp from the message footer
-                    let timestamp = new Date().toISOString();
-                    const timeElement = message.querySelector('.message-time');
-                    if (timeElement) {
-                        try {
-                            // Get today's date
-                            const today = new Date();
-                            // Get the time from the UI
-                            const timeString = timeElement.textContent;
-                            // Parse the time
-                            const timeParts = timeString.match(/(\d+):(\d+):(\d+)\s*([AP]M)?/i);
-
-                            if (timeParts) {
-                                let hours = parseInt(timeParts[1]);
-                                const minutes = parseInt(timeParts[2]);
-                                const seconds = parseInt(timeParts[3]);
-                                const ampm = timeParts[4];
-
-                                // Handle AM/PM if present
-                                if (ampm && ampm.toUpperCase() === 'PM' && hours < 12) {
-                                    hours += 12;
-                                } else if (ampm && ampm.toUpperCase() === 'AM' && hours === 12) {
-                                    hours = 0;
-                                }
-
-                                // Set the time on today's date
-                                today.setHours(hours, minutes, seconds);
-                                timestamp = today.toISOString();
-                            }
-                        } catch (error) {
-                            console.error('Error parsing time from UI:', error);
-                            // Fall back to current time
-                            timestamp = new Date().toISOString();
-                        }
-                    }
-
-                    chatMessages.push({
-                        type: isUser ? 'user' : 'bot',
-                        content: isUser ? messageContent.textContent : messageContent.innerHTML,
-                        timestamp: timestamp
-                    });
-                }
-            });
+        if (messages.length === 0) {
+            console.log('No messages to save');
+            return;
         }
 
-        // If there are no messages, don't save the chat
-        if (chatMessages.length === 0) {
-            console.log('No messages to save, skipping chat save');
-            return null;
-        }
-
-        // Get saved chats
+        // Get saved chats to check if this chat already exists
         let savedChats = JSON.parse(localStorage.getItem('ziahr_chats') || '[]');
+        const existingChat = savedChats.find(c => c.id === currentChatId);
 
-        // Find if this chat already exists to preserve its original timestamp and title
-        let existingChat = null;
-        if (currentChatId) {
-            existingChat = savedChats.find(c => c.id === currentChatId);
-        }
-
-        // Only use first user message for title if this is a new chat or the existing chat has the default title
+        // Determine the title - preserve existing title if it exists and isn't the default
         let title = 'New Chat';
         if (existingChat && existingChat.title && existingChat.title !== 'New Chat') {
-            // Preserve the existing title (especially if it was renamed)
+            // Keep the existing title (especially if it was renamed)
             title = existingChat.title;
             console.log(`Preserving existing chat title: "${title}"`);
         } else {
-            // Get first user message for title (only for new chats)
-            const firstUserMessage = chatMessages.find(msg => msg.type === 'user');
-            if (firstUserMessage) {
-                title = firstUserMessage.content.length > 30 ?
-                    firstUserMessage.content.substring(0, 30) + '...' :
-                    firstUserMessage.content;
-                console.log(`Using first user message for title: "${title}"`);
-            }
+            // Use first user message as title for new chats
+            title = getFirstUserMessage(messages) || 'New Chat';
+            console.log(`Using first user message for title: "${title}"`);
         }
 
-        // Get current timestamp
-        const now = new Date();
-
-        // Create chat object
+        // Create chat object with minimal metadata
         const chat = {
             id: currentChatId,
             title: title,
-            messages: chatMessages,
-            // Use the global originalChatTimestamp if available, or the existing chat's timestamp,
-            // or the current timestamp as a last resort
-            timestamp: window.originalChatTimestamp ||
-                      (existingChat && existingChat.timestamp && !isNaN(new Date(existingChat.timestamp).getTime()) ?
-                       existingChat.timestamp :
-                       now.toISOString())
+            timestamp: (updateTimestamp || !(existingChat && existingChat.timestamp))
+                ? new Date().toISOString()
+                : existingChat.timestamp
         };
 
-        // Log the timestamp for debugging
-        console.log(`Chat timestamp for ${chat.id}: ${chat.timestamp}`);
-        console.log(`Chat timestamp date object:`, new Date(chat.timestamp));
-
-        // Validate the timestamp
-        const timestampDate = new Date(chat.timestamp);
-        if (isNaN(timestampDate.getTime())) {
-            console.warn(`Invalid timestamp detected for chat ${chat.id}, resetting to current time`);
-            chat.timestamp = now.toISOString();
-        }
-
-        // If this chat already exists, update it
-        const existingIndex = savedChats.findIndex(c => c.id === chat.id);
-        if (existingIndex >= 0) {
-            savedChats[existingIndex] = chat;
-            console.log(`Updated existing chat with ID: ${chat.id}`);
+        // Check if chat already exists
+        const existingChatIndex = savedChats.findIndex(c => c.id === currentChatId);
+        if (existingChatIndex !== -1) {
+            // Update existing chat
+            savedChats[existingChatIndex] = chat;
         } else {
-            // Otherwise add as new chat
+            // Add new chat
             savedChats.push(chat);
-            console.log(`Added new chat with ID: ${chat.id}`);
         }
 
-        // Save back to localStorage
+        console.log('Saving chat object:', chat);
         localStorage.setItem('ziahr_chats', JSON.stringify(savedChats));
+        console.log('ziahr_chats after saving:', localStorage.getItem('ziahr_chats'));
 
-        // Update the chat history sidebar
-        loadSavedChats();
+        // Update chat item in sidebar if it exists
+        const chatItem = document.querySelector(`.chat-history-item[data-id="${currentChatId}"]`);
+        if (chatItem) {
+            const titleElement = chatItem.querySelector('.chat-title');
+            if (titleElement) {
+                titleElement.textContent = title;
+            }
+        }
 
-        console.log(`Chat saved successfully with ID: ${chat.id}`);
-        return chat.id;
+        console.log('Chat saved successfully');
     } catch (error) {
-        console.error('Error saving current chat:', error);
-        return null;
+        console.error('Error saving chat:', error);
     }
 }
 
@@ -1527,6 +1436,7 @@ function fixChatTimestamps(chats) {
 // Load saved chats from localStorage and populate sidebar
 function loadSavedChats() {
     try {
+        console.log('loadSavedChats called');
         const chatHistoryElement = document.getElementById('chatHistory');
         if (!chatHistoryElement) {
             console.error('Chat history element not found');
@@ -1538,6 +1448,7 @@ function loadSavedChats() {
 
         // Get saved chats
         let savedChats = JSON.parse(localStorage.getItem('ziahr_chats') || '[]');
+        console.log('Loaded savedChats from localStorage:', savedChats);
 
         // Filter out empty chats (chats with no messages and title "New Chat")
         savedChats = savedChats.filter(chat => {
@@ -1563,27 +1474,12 @@ function loadSavedChats() {
             createSampleChatHistory(chatHistoryElement);
         } else {
             // Group chats by date
+            console.log(`Processing ${savedChats.length} chats to add to sidebar.`);
             const now = new Date();
-
-            // Get today's date (midnight)
-            const today = new Date(now);
-            today.setHours(0, 0, 0, 0);
-
-            // Get yesterday's date (midnight)
-            const yesterday = new Date(today);
-            yesterday.setDate(yesterday.getDate() - 1);
-
-            // Get one week ago
-            const oneWeekAgo = new Date(today);
-            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-
-            // Get one month ago
-            const oneMonthAgo = new Date(today);
-            oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
-
-            console.log('Date boundaries for chat categorization:');
-            console.log('- Today starts at:', today.toISOString());
-            console.log('- Yesterday starts at:', yesterday.toISOString());
+            const todayMidnight = getLocalMidnight(now);
+            const yesterdayMidnight = todayMidnight - 24 * 60 * 60 * 1000;
+            const oneWeekAgoMidnight = todayMidnight - 7 * 24 * 60 * 60 * 1000;
+            const oneMonthAgoMidnight = todayMidnight - 30 * 24 * 60 * 60 * 1000;
 
             let todayChats = [];
             let yesterdayChats = [];
@@ -1592,60 +1488,22 @@ function loadSavedChats() {
             let olderChats = [];
 
             savedChats.forEach(chat => {
-                try {
-                    // Parse the chat timestamp
-                    const chatDate = new Date(chat.timestamp || 0);
-
-                    // Skip invalid dates
-                    if (isNaN(chatDate.getTime())) {
-                        console.warn(`Chat "${chat.title}" (${chat.id}) has invalid timestamp: ${chat.timestamp}`);
-                        // Default to today for invalid dates
-                        todayChats.push(chat);
-                        return;
-                    }
-
-                    // Get the chat date at midnight for proper day comparison
-                    const chatDateMidnight = new Date(chatDate);
-                    chatDateMidnight.setHours(0, 0, 0, 0);
-
-                    // Debug logging
-                    console.log(`Chat "${chat.title}" (${chat.id}) timestamp:`, chatDate.toISOString());
-                    console.log(`Chat date at midnight:`, chatDateMidnight.toISOString());
-                    console.log(`Today midnight:`, today.toISOString());
-                    console.log(`Yesterday midnight:`, yesterday.toISOString());
-
-                    // Compare dates using time values for more reliable comparison
-                    const chatTime = chatDateMidnight.getTime();
-                    const todayTime = today.getTime();
-                    const yesterdayTime = yesterday.getTime();
-                    const weekAgoTime = oneWeekAgo.getTime();
-                    const monthAgoTime = oneMonthAgo.getTime();
-
-                    // Categorize based on time comparisons
-                    if (chatTime === todayTime) {
-                        console.log(`Chat "${chat.title}" categorized as TODAY`);
-                        todayChats.push(chat);
-                    } else if (chatTime === yesterdayTime) {
-                        console.log(`Chat "${chat.title}" categorized as YESTERDAY`);
-                        yesterdayChats.push(chat);
-                    } else if (chatTime > yesterdayTime && chatTime < todayTime) {
-                        // This should never happen but just in case
-                        console.log(`Chat "${chat.title}" categorized as TODAY (fallback)`);
-                        todayChats.push(chat);
-                    } else if (chatTime >= weekAgoTime && chatTime < yesterdayTime) {
-                        console.log(`Chat "${chat.title}" categorized as PREVIOUS WEEK`);
-                        previousWeekChats.push(chat);
-                    } else if (chatTime >= monthAgoTime && chatTime < weekAgoTime) {
-                        console.log(`Chat "${chat.title}" categorized as PREVIOUS MONTH`);
-                        previousMonthChats.push(chat);
-                    } else {
-                        console.log(`Chat "${chat.title}" categorized as OLDER`);
-                        olderChats.push(chat);
-                    }
-                } catch (error) {
-                    console.error(`Error categorizing chat "${chat.title}" (${chat.id}):`, error);
-                    // Default to today for any errors
+                // Parse the chat timestamp
+                const chatMidnight = getLocalMidnight(chat.timestamp || 0);
+                if (isNaN(chatMidnight)) {
                     todayChats.push(chat);
+                    return;
+                }
+                if (chatMidnight === todayMidnight) {
+                    todayChats.push(chat);
+                } else if (chatMidnight === yesterdayMidnight) {
+                    yesterdayChats.push(chat);
+                } else if (chatMidnight >= oneWeekAgoMidnight && chatMidnight < yesterdayMidnight) {
+                    previousWeekChats.push(chat);
+                } else if (chatMidnight >= oneMonthAgoMidnight && chatMidnight < oneWeekAgoMidnight) {
+                    previousMonthChats.push(chat);
+                } else if (chatMidnight < oneMonthAgoMidnight) {
+                    olderChats.push(chat);
                 }
             });
 
@@ -1656,26 +1514,13 @@ function loadSavedChats() {
             previousMonthChats.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
             olderChats.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
 
-            // Update the full chat history with sorted chats
-            chatHistory = [...todayChats, ...yesterdayChats, ...previousWeekChats, ...previousMonthChats, ...olderChats];
-
-            // Log the number of chats in each category
-            console.log(`Chat counts by category:`);
-            console.log(`- Today: ${todayChats.length}`);
-            console.log(`- Yesterday: ${yesterdayChats.length}`);
-            console.log(`- Previous Week: ${previousWeekChats.length}`);
-            console.log(`- Previous Month: ${previousMonthChats.length}`);
-            console.log(`- Older: ${olderChats.length}`);
-
             // Add "Today" section
             if (todayChats.length > 0) {
                 const todayHeader = document.createElement('div');
                 todayHeader.className = 'chat-history-header';
                 todayHeader.textContent = 'Today';
-                todayHeader.id = 'today-header';
                 chatHistoryElement.appendChild(todayHeader);
                 todayChats.forEach(chat => addChatItem(chat, chatHistoryElement));
-                console.log('Added TODAY header and chats to sidebar');
             }
 
             // Add "Yesterday" section
@@ -1683,38 +1528,32 @@ function loadSavedChats() {
                 const yesterdayHeader = document.createElement('div');
                 yesterdayHeader.className = 'chat-history-header';
                 yesterdayHeader.textContent = 'Yesterday';
-                yesterdayHeader.id = 'yesterday-header';
                 chatHistoryElement.appendChild(yesterdayHeader);
                 yesterdayChats.forEach(chat => addChatItem(chat, chatHistoryElement));
-                console.log('Added YESTERDAY header and chats to sidebar');
             }
 
-            // Add "Previous 7 Days" section
+            // Add "Previous Week" section
             if (previousWeekChats.length > 0) {
                 const previousWeekHeader = document.createElement('div');
                 previousWeekHeader.className = 'chat-history-header';
-                previousWeekHeader.textContent = 'Previous 7 Days';
-                previousWeekHeader.id = 'previous-week-header';
+                previousWeekHeader.textContent = 'Previous Week';
                 chatHistoryElement.appendChild(previousWeekHeader);
                 previousWeekChats.forEach(chat => addChatItem(chat, chatHistoryElement));
-                console.log('Added PREVIOUS WEEK header and chats to sidebar');
             }
 
-            // Add "Previous 30 Days" section
+            // Add "Previous Month" section
             if (previousMonthChats.length > 0) {
                 const previousMonthHeader = document.createElement('div');
                 previousMonthHeader.className = 'chat-history-header';
-                previousMonthHeader.textContent = 'Previous 30 Days';
-                previousMonthHeader.id = 'previous-month-header';
+                previousMonthHeader.textContent = 'Previous Month';
                 chatHistoryElement.appendChild(previousMonthHeader);
                 previousMonthChats.forEach(chat => addChatItem(chat, chatHistoryElement));
-                console.log('Added PREVIOUS MONTH header and chats to sidebar');
             }
 
-            // Add older chats by month name
+            // Group older chats by month
             if (olderChats.length > 0) {
-                // Group older chats by month and year
                 const monthGroups = {};
+
                 olderChats.forEach(chat => {
                     const chatDate = new Date(chat.timestamp || 0);
                     const monthName = chatDate.toLocaleString('default', { month: 'long' });
@@ -1732,13 +1571,13 @@ function loadSavedChats() {
                     const monthHeader = document.createElement('div');
                     monthHeader.className = 'chat-history-header';
                     monthHeader.textContent = monthKey;
-                    monthHeader.id = `month-header-${monthKey.replace(/\s+/g, '-').toLowerCase()}`;
                     chatHistoryElement.appendChild(monthHeader);
                     monthGroups[monthKey].forEach(chat => addChatItem(chat, chatHistoryElement));
-                    console.log(`Added ${monthKey} header and chats to sidebar`);
                 });
             }
         }
+
+        console.log(`Loaded ${savedChats.length} saved chats`);
     } catch (error) {
         console.error('Error loading saved chats:', error);
     }
@@ -2113,6 +1952,15 @@ function setupLoginFunctionality() {
                         window.location.reload();
                     }
 
+                    // Add the escalation button after successful login
+                    if (typeof addEscalationButton === 'function') {
+                         addEscalationButton();
+                    } else if (typeof window.addEscalationButton === 'function') {
+                         window.addEscalationButton();
+                    } else {
+                         console.error('addEscalationButton function not found');
+                    }
+
                     // Check if there was a pre-login suggestion and use it
                     const preSuggestion = localStorage.getItem('pre_login_suggestion');
                     if (preSuggestion) {
@@ -2206,11 +2054,12 @@ function setupLoginFunctionality() {
                 const fullName = fullNameInput.value.trim();
                 const email = registerEmailInput.value.trim();
                 const password = registerPasswordInput.value.trim();
-                const companyName = companyNameInput.value.trim();
+                const employeeIdInput = document.getElementById('employeeId'); // Get the new input element
+                const employeeId = employeeIdInput ? employeeIdInput.value.trim() : ''; // Get value, handle case where element not found
 
-                if (!fullName || !email || !password || !companyName) {
+                if (!fullName || !email || !password) {
                     // Show error message as a toast notification with simplified format
-                    showToastNotification('', 'Please fill in all fields.', true);
+                    showToastNotification('', 'Please fill in all required fields.', true); // Updated message
                     return;
                 }
 
@@ -2237,7 +2086,7 @@ function setupLoginFunctionality() {
                             full_name: fullName,
                             email: email,
                             password: password,
-                            company_name: companyName
+                            employee_id: employeeId // Send employee_id instead of company_name
                         })
                     });
 
@@ -2375,7 +2224,7 @@ function setupNewChatButton() {
                     chatMessages.innerHTML = `
                         <div class="welcome-container">
                             <div class="welcome-message">
-                                <h2>Welcome to ZiaHR</h2>
+                                <h2>Welcome to HR Assistant</h2>
                                 <p>I can help you with questions about company policies, employee guidelines, and HR procedures.</p>
                                 <div class="suggestion-chips">
                                     <button class="suggestion-chip">Leave Policy</button>
@@ -2497,6 +2346,7 @@ function setupPasswordToggle() {
 
 // Helper function to add a chat item to the history
 function addChatItem(chat, container) {
+    console.log('addChatItem called for chat:', chat); // Added console log
     // Skip empty chats (chats with no messages and title "New Chat")
     if (chat.title === 'New Chat' && (!chat.messages || chat.messages.length === 0)) {
         console.log(`Skipping empty chat with ID ${chat.id} in addChatItem`);
@@ -2789,43 +2639,7 @@ function deleteConfirmedChat(chatId) {
                             </div>
                         </div>
                     </div>
-
-                    <!-- Centered input container -->
-                    <div class="chat-input-container">
-                        <form id="chatForm" class="chat-input-form">
-                            <!-- Main input area -->
-                            <div class="input-main-area">
-                                <textarea id="userInput" placeholder="How can I help you today?" rows="1" autocomplete="off"></textarea>
-                            </div>
-
-                            <!-- Action buttons row -->
-                            <div class="input-actions-row">
-                                <div class="left-actions">
-                                    <button type="button" id="quickUploadBtn" class="action-btn" title="Upload Documents">
-                                        <i class="fas fa-paperclip"></i>
-                                    </button>
-                                    <input type="file" id="quickFileUpload" accept=".pdf,.docx,.txt,.md" hidden multiple>
-                                    <button type="button" id="voiceInputBtn" class="action-btn" title="Voice Input">
-                                        <i class="fas fa-microphone"></i>
-                                    </button>
-                                </div>
-                                <div class="right-actions">
-                                    <button type="submit" id="sendBtn" class="send-btn" title="Send message" disabled>
-                                        <i class="fas fa-arrow-up"></i>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- File list container (hidden, used for internal tracking) -->
-                            <div id="fileListContainer" class="file-list-container" style="display: none;"></div>
-
-                            <!-- File display area -->
-                            <div class="file-display-area">
-                                <!-- Files will be dynamically added here by JavaScript -->
-                            </div>
-                        </form>
-                    </div>
-                `;
+`;
 
                 // Set up suggestion chips
                 const suggestionChips = document.querySelectorAll('.suggestion-chip');
@@ -2872,28 +2686,18 @@ function loadChatFromUrl(chatId) {
 }
 
 // Load a specific chat by ID
-function loadChat(chatId, fromSearch = false) {
+async function loadChat(chatId, fromSearch = false) {
     try {
         console.log(`Loading chat with ID: ${chatId}${fromSearch ? ' from search' : ''}`);
+
+        // Remove any existing typing indicator
+        removeTypingIndicator();
 
         // Save current chat first if there are messages
         const messages = document.querySelectorAll('.message');
         if (messages.length > 0 && currentChatId !== chatId) {
-            saveCurrentChat();
+            saveCurrentChat(false); // Do not update timestamp when just opening a chat
         }
-
-        // Find the chat in history
-        const chat = chatHistory.find(c => c.id === chatId);
-        if (!chat) {
-            console.error(`Chat with ID ${chatId} not found`);
-            return;
-        }
-
-        // Store the original timestamp to preserve it
-        const originalTimestamp = chat.timestamp;
-
-        // Store the original timestamp in a global variable to ensure it's preserved when saving
-        window.originalChatTimestamp = originalTimestamp;
 
         // Set current chat ID
         currentChatId = chatId;
@@ -2922,22 +2726,143 @@ function loadChat(chatId, fromSearch = false) {
 
         chatMessages.innerHTML = '';
 
-        // Add messages to UI
-        chat.messages.forEach(message => {
+        // Fetch total message count first
+        const countResponse = await fetch(`/api/chats/${chatId}/count`); // Assuming a new endpoint for count
+        const countData = await countResponse.json();
+
+        if (!countData.success) {
+            throw new Error(countData.error || 'Failed to get message count');
+        }
+
+        const totalMessages = countData.count;
+        console.log(`Chat ${chatId} has ${totalMessages} messages.`);
+
+        // If the chat is empty, show the welcome message instead of loading indicator
+        if (totalMessages === 0) {
+             // Check if user is logged in before adding welcome message
+            const isLoggedIn = !!localStorage.getItem('user_data');
+
+            if (!isLoggedIn) {
+                // Only add welcome message if user is not logged in
+                chatMessages.innerHTML = `
+                    <div class="welcome-container">
+                        <div class="welcome-message">
+                            <h2>Welcome to HR Assistant</h2>
+                            <p>I can help you with questions about company policies, employee guidelines, and HR procedures.</p>
+                            <div class="suggestion-chips">
+                                <button class="suggestion-chip">Leave Policy</button>
+                                <button class="suggestion-chip">Referral Program</button>
+                                <button class="suggestion-chip">Dress Code</button>
+                                <button class="suggestion-chip">Work from Home</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+             // Also ensure the chat input is centered for a new chat
+            const chatInputContainer = document.querySelector('.chat-input-container');
+            if (chatInputContainer) {
+                 chatInputContainer.style.position = 'fixed';
+                 chatInputContainer.style.top = 'auto';
+                 chatInputContainer.style.bottom = '24px';
+                 chatInputContainer.style.transform = 'translate(-50%, 0)';
+                 chatInputContainer.style.left = '50%';
+                 chatInputContainer.style.marginLeft = '0';
+                 chatInputContainer.style.right = 'auto';
+                 document.body.classList.remove('welcome-removed'); // Ensure welcome state classes are correct
+                 console.log('Reset chat input container position for new chat');
+            }
+
+            // Set up suggestion chips
+            const suggestionChips = document.querySelectorAll('.welcome-container .suggestion-chip');
+            suggestionChips.forEach(chip => {
+                chip.addEventListener('click', function() {
+                    const suggestion = this.textContent.trim();
+                    handleSuggestion(suggestion);
+                });
+            });
+
+            // Clear input field and disable send button
+            const userInput = document.getElementById('userInput');
+            const sendBtn = document.getElementById('sendBtn');
+            if(userInput) userInput.value = '';
+            if(sendBtn) sendBtn.disabled = true;
+
+            isLoading = false; // Ensure isLoading is false for empty chat
+            hasMoreMessages = false; // No messages to load
+
+        } else {
+             // Initialize virtual scroll container only for chats with messages
+            const virtualScrollContainer = document.createElement('div');
+            virtualScrollContainer.className = 'virtual-scroll-container';
+            chatMessages.appendChild(virtualScrollContainer);
+
+            // Track pagination state
+            let currentPage = 1;
+            const pageSize = 20;
+            let isLoading = false;
+            let hasMoreMessages = true;
+
+             // Add scroll event listener for infinite scroll only for chats with messages
+            chatMessages.addEventListener('scroll', async () => {
+                if (chatMessages.scrollTop === 0 && !isLoading && hasMoreMessages) {
+                    currentPage++;
+                    await loadMessages(currentPage);
+                }
+            });
+
+            // Function to load messages for a specific page
+            async function loadMessages(page) {
+                if (isLoading || !hasMoreMessages) return;
+
+                isLoading = true;
+
+                // Add loading indicator
+                const loadingIndicator = document.createElement('div');
+                loadingIndicator.className = 'loading-messages';
+                loadingIndicator.textContent = 'Loading messages...';
+                // Add indicator at the top of the virtual scroll container
+                virtualScrollContainer.insertBefore(loadingIndicator, virtualScrollContainer.firstChild);
+
+                try {
+                    const response = await fetch(`/api/chats/${chatId}?page=${page}&page_size=${pageSize}`);
+                    const data = await response.json();
+
+                    if (!data.success) {
+                        throw new Error(data.error || 'Failed to load messages');
+                    } else if (data.messages.length === 0 && page > 1) {
+                         // If no messages returned for subsequent pages, indicate no more messages
+                         hasMoreMessages = false;
+                    }
+
+                    // Remove loading indicator
+                    loadingIndicator.remove();
+
+                    // Update pagination state
+                    // hasMoreMessages = page < data.pagination.total_pages; // Re-evaluate this logic based on actual message count
+                    if(data.messages.length < pageSize) { // If fewer messages than page size, assume no more pages
+                         hasMoreMessages = false;
+                    }
+
+                    // Add messages to virtual scroll container
+                    // Need to prepend messages for infinite scroll (loading older messages)
+                    const fragment = document.createDocumentFragment();
+                    data.messages.forEach(message => {
             const messageElement = document.createElement('div');
             messageElement.className = `message ${message.type}-message`;
 
             const contentElement = document.createElement('div');
             contentElement.className = 'message-content';
 
-            if (message.type === 'bot') {
-                contentElement.innerHTML = message.content;
+                         if (message.type === 'bot' || message.type === 'system') { // Handle system messages similarly to bot for rendering
+                            contentElement.innerHTML = marked.parse(message.content); // Parse markdown for bot/system messages
 
                 // Add footer with timestamp and feedback buttons
                 const footerElement = document.createElement('div');
                 footerElement.className = 'message-footer';
 
-                // Create feedback element first
+                             // Create feedback element first (only for bot messages, not system)
+                             if (message.type === 'bot') {
                 const feedbackElement = document.createElement('div');
                 feedbackElement.className = 'message-feedback';
 
@@ -2950,36 +2875,34 @@ function loadChat(chatId, fromSearch = false) {
                 copyBtn.className = 'feedback-btn copy-btn';
                 copyBtn.innerHTML = '<i class="far fa-copy"></i>';
                 copyBtn.setAttribute('title', 'Copy to clipboard');
-                copyBtn.onclick = function() {
-                    // Copy message content to clipboard
-                    const textToCopy = contentElement.innerText || contentElement.textContent;
+                                 copyBtn.onclick = () => {
+                                     // Use textContent for accurate copy, not innerHTML
+                                     const textToCopy = contentElement.textContent;
                     navigator.clipboard.writeText(textToCopy).then(() => {
                         // Show temporary success state
                         copyBtn.classList.add('active');
-
-                        // Change icon to checkmark to indicate success
                         const originalIcon = copyBtn.innerHTML;
                         copyBtn.innerHTML = '<i class="fas fa-check"></i>';
-
                         setTimeout(() => {
                             copyBtn.classList.remove('active');
                             copyBtn.innerHTML = originalIcon;
                         }, 1500);
-                    });
+                                     }).catch(err => console.error('Failed to copy text: ', err));
                 };
 
                 // Create thumbs up button
                 const thumbsUpBtn = document.createElement('button');
                 thumbsUpBtn.className = 'feedback-btn thumbs-up';
                 thumbsUpBtn.innerHTML = '<i class="far fa-thumbs-up"></i>';
-                thumbsUpBtn.setAttribute('title', 'Thumbs up');
+                                 thumbsUpBtn.setAttribute('title', 'Helpful');
                 thumbsUpBtn.onclick = function() {
                     // Toggle active state
                     if (thumbsUpBtn.classList.contains('active')) {
                         thumbsUpBtn.classList.remove('active');
                     } else {
                         thumbsUpBtn.classList.add('active');
-                        thumbsDownBtn.classList.remove('active');
+                                         const thumbsDownBtn = this.closest('.message-footer').querySelector('.thumbs-down');
+                                         if (thumbsDownBtn) thumbsDownBtn.classList.remove('active');
                     }
                 };
 
@@ -2987,14 +2910,15 @@ function loadChat(chatId, fromSearch = false) {
                 const thumbsDownBtn = document.createElement('button');
                 thumbsDownBtn.className = 'feedback-btn thumbs-down';
                 thumbsDownBtn.innerHTML = '<i class="far fa-thumbs-down"></i>';
-                thumbsDownBtn.setAttribute('title', 'Thumbs down');
+                                 thumbsDownBtn.setAttribute('title', 'Not helpful');
                 thumbsDownBtn.onclick = function() {
                     // Toggle active state
                     if (thumbsDownBtn.classList.contains('active')) {
                         thumbsDownBtn.classList.remove('active');
                     } else {
                         thumbsDownBtn.classList.add('active');
-                        thumbsUpBtn.classList.remove('active');
+                                          const thumbsUpBtn = this.closest('.message-footer').querySelector('.thumbs-up');
+                                         if (thumbsUpBtn) thumbsUpBtn.classList.remove('active');
                     }
                 };
 
@@ -3004,10 +2928,6 @@ function loadChat(chatId, fromSearch = false) {
                 audioBtn.innerHTML = '<i class="fas fa-volume-up"></i>';
                 audioBtn.setAttribute('title', 'Read aloud');
                 audioBtn.setAttribute('data-speaking', 'false');
-
-                // Store the utterance on the button element for later access
-                audioBtn.utterance = null;
-
                 audioBtn.onclick = function() {
                     // Check if already speaking
                     if (audioBtn.getAttribute('data-speaking') === 'true') {
@@ -3021,10 +2941,10 @@ function loadChat(chatId, fromSearch = false) {
                     }
 
                     // Read the message aloud using text-to-speech
-                    const textToSpeak = contentElement.innerText || contentElement.textContent;
+                                     const textToSpeak = contentElement.textContent; // Use textContent to avoid reading HTML tags
                     const utterance = new SpeechSynthesisUtterance(textToSpeak);
 
-                    // Store the utterance for later access
+                                     // Store the utterance on the button element for later access
                     audioBtn.utterance = utterance;
 
                     // Set up event handlers
@@ -3060,12 +2980,11 @@ function loadChat(chatId, fromSearch = false) {
 
                 // Add feedback element to footer first
                 footerElement.appendChild(feedbackElement);
+                             }
 
-                // Add timestamp - use message timestamp if available, otherwise use current time
+                             // Add timestamp - use provided timestamp if available
                 const timeElement = document.createElement('span');
                 timeElement.className = 'message-time';
-
-                // Use the message's timestamp if available, otherwise use current time
                 if (message.timestamp) {
                     const messageDate = new Date(message.timestamp);
                     timeElement.textContent = messageDate.toLocaleTimeString();
@@ -3073,7 +2992,6 @@ function loadChat(chatId, fromSearch = false) {
                     timeElement.textContent = new Date().toLocaleTimeString();
                 }
 
-                // Create time container and add to footer
                 const timeContainer = document.createElement('div');
                 timeContainer.className = 'time-container';
                 timeContainer.appendChild(timeElement);
@@ -3081,7 +2999,7 @@ function loadChat(chatId, fromSearch = false) {
 
                 messageElement.appendChild(contentElement);
                 messageElement.appendChild(footerElement);
-            } else {
+                         } else { // User message
                 contentElement.textContent = message.content;
                 messageElement.appendChild(contentElement);
 
@@ -3089,11 +3007,9 @@ function loadChat(chatId, fromSearch = false) {
                 const footerElement = document.createElement('div');
                 footerElement.className = 'message-footer';
 
-                // Add timestamp - use message timestamp if available, otherwise use current time
+                             // Add timestamp
                 const timeElement = document.createElement('span');
                 timeElement.className = 'message-time';
-
-                // Use the message's timestamp if available, otherwise use current time
                 if (message.timestamp) {
                     const messageDate = new Date(message.timestamp);
                     timeElement.textContent = messageDate.toLocaleTimeString();
@@ -3108,11 +3024,32 @@ function loadChat(chatId, fromSearch = false) {
                 messageElement.appendChild(footerElement);
             }
 
-            chatMessages.appendChild(messageElement);
+                        fragment.appendChild(messageElement);
         });
 
-        // Scroll to bottom
+                    // Prepend messages to the virtual scroll container
+                    virtualScrollContainer.insertBefore(fragment, virtualScrollContainer.firstChild);
+
+                    // Scroll to bottom if this is the first page being loaded (i.e., loading the chat initially)
+                    // Or if we're loading the very latest messages in a live chat scenario (less likely with this logic)
+                    if (page === 1) {
         chatMessages.scrollTop = chatMessages.scrollHeight;
+                    }
+
+                } catch (error) {
+                    console.error('Error loading messages:', error);
+                    // Show error notification
+                    showToastNotification('Error', 'Error loading messages. Please try again.', true);
+                } finally {
+                    isLoading = false;
+                }
+            }
+
+            // Load initial messages (page 1)
+            await loadMessages(1);
+
+        }
+
 
         // Update active state in sidebar
         const chatItems = document.querySelectorAll('.chat-history-item');
@@ -3139,6 +3076,7 @@ function loadChat(chatId, fromSearch = false) {
         console.log(`Chat with ID ${chatId} loaded successfully`);
     } catch (error) {
         console.error('Error loading chat:', error);
+        showToastNotification('Error', 'Error loading chat. Please try again.', true);
     }
 }
 
@@ -3204,26 +3142,10 @@ function loadSavedChats() {
 
         // Group chats by date
         const now = new Date();
-
-        // Get today's date (midnight)
-        const today = new Date(now);
-        today.setHours(0, 0, 0, 0);
-
-        // Get yesterday's date (midnight)
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-
-        // Get one week ago
-        const oneWeekAgo = new Date(today);
-        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-
-        // Get one month ago
-        const oneMonthAgo = new Date(today);
-        oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
-
-        console.log('Date boundaries for chat categorization (search):');
-        console.log('- Today starts at:', today.toISOString());
-        console.log('- Yesterday starts at:', yesterday.toISOString());
+        const todayMidnight = getLocalMidnight(now);
+        const yesterdayMidnight = todayMidnight - 24 * 60 * 60 * 1000;
+        const oneWeekAgoMidnight = todayMidnight - 7 * 24 * 60 * 60 * 1000;
+        const oneMonthAgoMidnight = todayMidnight - 30 * 24 * 60 * 60 * 1000;
 
         let todayChats = [];
         let yesterdayChats = [];
@@ -3233,25 +3155,20 @@ function loadSavedChats() {
 
         savedChats.forEach(chat => {
             // Parse the chat timestamp
-            const chatDate = new Date(chat.timestamp || 0);
-
-            // Get the chat date at midnight for proper day comparison
-            const chatDateMidnight = new Date(chatDate);
-            chatDateMidnight.setHours(0, 0, 0, 0);
-
-            // Compare dates at midnight level for proper day categorization
-            if (chatDateMidnight.getTime() === today.getTime()) {
+            const chatMidnight = getLocalMidnight(chat.timestamp || 0);
+            if (isNaN(chatMidnight)) {
                 todayChats.push(chat);
-            } else if (chatDateMidnight.getTime() === yesterday.getTime()) {
+                return;
+            }
+            if (chatMidnight === todayMidnight) {
+                todayChats.push(chat);
+            } else if (chatMidnight === yesterdayMidnight) {
                 yesterdayChats.push(chat);
-            } else if (chatDateMidnight > yesterday && chatDateMidnight < today) {
-                // This should never happen but just in case
-                todayChats.push(chat);
-            } else if (chatDateMidnight >= oneWeekAgo && chatDateMidnight < yesterday) {
+            } else if (chatMidnight >= oneWeekAgoMidnight && chatMidnight < yesterdayMidnight) {
                 previousWeekChats.push(chat);
-            } else if (chatDateMidnight >= oneMonthAgo && chatDateMidnight < oneWeekAgo) {
+            } else if (chatMidnight >= oneMonthAgoMidnight && chatMidnight < oneWeekAgoMidnight) {
                 previousMonthChats.push(chat);
-            } else {
+            } else if (chatMidnight < oneMonthAgoMidnight) {
                 olderChats.push(chat);
             }
         });
@@ -3274,20 +3191,20 @@ function loadSavedChats() {
             yesterdayChats.forEach(chat => addChatItem(chat, chatHistoryContainer));
         }
 
-        // Add "Previous 7 Days" section
+        // Add "Previous Week" section
         if (previousWeekChats.length > 0) {
             const previousWeekHeader = document.createElement('div');
             previousWeekHeader.className = 'chat-history-header';
-            previousWeekHeader.textContent = 'Previous 7 Days';
+            previousWeekHeader.textContent = 'Previous Week';
             chatHistoryContainer.appendChild(previousWeekHeader);
             previousWeekChats.forEach(chat => addChatItem(chat, chatHistoryContainer));
         }
 
-        // Add "Previous 30 Days" section
+        // Add "Previous Month" section
         if (previousMonthChats.length > 0) {
             const previousMonthHeader = document.createElement('div');
             previousMonthHeader.className = 'chat-history-header';
-            previousMonthHeader.textContent = 'Previous 30 Days';
+            previousMonthHeader.textContent = 'Previous Month';
             chatHistoryContainer.appendChild(previousMonthHeader);
             previousMonthChats.forEach(chat => addChatItem(chat, chatHistoryContainer));
         }
@@ -3322,145 +3239,6 @@ function loadSavedChats() {
     } catch (error) {
         console.error('Error loading saved chats:', error);
         // Don't add demo chats as fallback anymore
-    }
-}
-
-// Save current chat to localStorage
-function saveCurrentChat() {
-    try {
-        if (!currentChatId) {
-            console.log('No current chat to save');
-            return;
-        }
-
-        console.log(`Saving current chat with ID: ${currentChatId}`);
-
-        // Get all messages from the UI
-        const messages = document.querySelectorAll('.message');
-        if (messages.length === 0) {
-            console.log('No messages to save');
-            return;
-        }
-
-        // Get saved chats to check if this chat already exists
-        let savedChats = JSON.parse(localStorage.getItem('ziahr_chats') || '[]');
-        const existingChat = savedChats.find(c => c.id === currentChatId);
-
-        // Determine the title - preserve existing title if it exists and isn't the default
-        let title = 'New Chat';
-        if (existingChat && existingChat.title && existingChat.title !== 'New Chat') {
-            // Keep the existing title (especially if it was renamed)
-            title = existingChat.title;
-            console.log(`Preserving existing chat title: "${title}"`);
-        } else {
-            // Use first user message as title for new chats
-            title = getFirstUserMessage(messages) || 'New Chat';
-            console.log(`Using first user message for title: "${title}"`);
-        }
-
-        // Create chat object
-        const chat = {
-            id: currentChatId,
-            title: title,
-            messages: [],
-            timestamp: new Date().toISOString()
-        };
-
-        // Add messages to chat object
-        messages.forEach(message => {
-            const isUser = message.classList.contains('user-message');
-            const isBot = message.classList.contains('bot-message');
-            const messageContent = message.querySelector('.message-content');
-            const timeElement = message.querySelector('.message-time');
-
-            // Get the timestamp from the UI if available
-            let timestamp = new Date().toISOString();
-            if (timeElement) {
-                // Try to parse the time from the UI
-                try {
-                    // Get today's date
-                    const today = new Date();
-                    // Get the time from the UI
-                    const timeString = timeElement.textContent;
-                    // Parse the time
-                    const timeParts = timeString.match(/(\d+):(\d+):(\d+)\s*([AP]M)?/i);
-
-                    if (timeParts) {
-                        let hours = parseInt(timeParts[1]);
-                        const minutes = parseInt(timeParts[2]);
-                        const seconds = parseInt(timeParts[3]);
-                        const ampm = timeParts[4];
-
-                        // Handle AM/PM if present
-                        if (ampm && ampm.toUpperCase() === 'PM' && hours < 12) {
-                            hours += 12;
-                        } else if (ampm && ampm.toUpperCase() === 'AM' && hours === 12) {
-                            hours = 0;
-                        }
-
-                        // Set the time on today's date
-                        today.setHours(hours, minutes, seconds);
-                        timestamp = today.toISOString();
-                    }
-                } catch (error) {
-                    console.error('Error parsing time from UI:', error);
-                    // Fall back to current time
-                    timestamp = new Date().toISOString();
-                }
-            }
-
-            if (messageContent) {
-                chat.messages.push({
-                    type: isUser ? 'user' : (isBot ? 'bot' : 'system'),
-                    content: isUser ? messageContent.textContent : messageContent.innerHTML,
-                    timestamp: timestamp
-                });
-            }
-        });
-
-        // Check if chat already exists
-        const existingChatIndex = savedChats.findIndex(c => c.id === currentChatId);
-        if (existingChatIndex !== -1) {
-            // Update existing chat
-            savedChats[existingChatIndex] = chat;
-        } else {
-            // Add new chat
-            savedChats.push(chat);
-        }
-
-        // Save back to localStorage
-        localStorage.setItem('ziahr_chats', JSON.stringify(savedChats));
-
-        // Update chat history
-        chatHistory = savedChats;
-
-        // Update chat item in sidebar if it exists
-        const chatItem = document.querySelector(`.chat-history-item[data-id="${currentChatId}"]`);
-        if (!chatItem) {
-            // Add new chat item to sidebar
-            const chatHistoryContainer = document.getElementById('chatHistory');
-            if (chatHistoryContainer) {
-                // Make sure the header exists
-                if (!document.querySelector('.chat-history-header')) {
-                    const header = document.createElement('div');
-                    header.className = 'chat-history-header';
-                    header.textContent = 'Today';
-                    chatHistoryContainer.insertBefore(header, chatHistoryContainer.firstChild);
-                }
-
-                addChatItem(chat, chatHistoryContainer);
-            }
-        } else {
-            // Update existing chat item title
-            const titleElement = chatItem.querySelector('.chat-history-item-title');
-            if (titleElement) {
-                titleElement.textContent = chat.title;
-            }
-        }
-
-        console.log(`Chat with ID ${currentChatId} saved successfully`);
-    } catch (error) {
-        console.error('Error saving current chat:', error);
     }
 }
 
@@ -3731,3 +3509,10 @@ document.addEventListener('themeChanged', function(e) {
         }
     }
 });
+
+// Helper to get local midnight timestamp
+function getLocalMidnight(date) {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+}

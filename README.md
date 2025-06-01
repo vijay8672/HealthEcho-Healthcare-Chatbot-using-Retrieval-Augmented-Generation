@@ -39,8 +39,8 @@ The chatbot uses a modular architecture with the following components:
 1. Clone the repository
 2. Create and activate a virtual environment:
    ```
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   conda create -p venv python=3.10 -y
+   conda activate venv/
    ```
 3. Install dependencies:
    ```
@@ -66,7 +66,7 @@ The chatbot uses a modular architecture with the following components:
 
 1. Start the application:
    ```
-   python run_chatbot.py
+   python app.py
    ```
 2. Open your browser and navigate to `http://localhost:5000`
 

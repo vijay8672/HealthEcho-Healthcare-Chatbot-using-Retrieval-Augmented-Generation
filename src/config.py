@@ -1,19 +1,25 @@
 """
 Configuration settings for the Advanced RAG Chatbot.
 """
+
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Base directories
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
 EMBEDDINGS_DIR = DATA_DIR / "embeddings"
 PROCESSED_DIR = DATA_DIR / "processed"
-RAW_DIR = DATA_DIR / "raw"
+RAW_DIR = DATA_DIR / "raw_files"
 DB_DIR = DATA_DIR / "db"
+MODELS_DIR = DATA_DIR / "models"
 
 # Create directories if they don't exist
-for directory in [DATA_DIR, EMBEDDINGS_DIR, PROCESSED_DIR, RAW_DIR, DB_DIR]:
+for directory in [DATA_DIR, EMBEDDINGS_DIR, PROCESSED_DIR, RAW_DIR, DB_DIR, MODELS_DIR]:
     directory.mkdir(exist_ok=True, parents=True)
 
 # Database settings
@@ -21,7 +27,7 @@ DATABASE_PATH = DB_DIR / "chatbot.db"
 
 # Model settings
 EMBEDDING_MODEL_NAME = "sentence-transformers/multi-qa-mpnet-base-dot-v1"
-LLM_MODEL_NAME = "llama3-8b-8192"  # Using Groq's Llama 3 model
+LLM_MODEL_NAME = os.getenv("GROQ_MODEL", "llama3-8b-8192")  # Using Groq's Llama 3 model
 
 # Vector search settings
 VECTOR_DIMENSION = 768  # Dimension of the embedding vectors
@@ -32,11 +38,33 @@ MAX_CONTEXT_DOCUMENTS = 5  # Maximum number of documents to include in context
 MAX_HISTORY_MESSAGES = 10  # Maximum number of messages to keep in conversation history
 
 # Speech settings
-SPEECH_RECOGNITION_DURATION = 5  # Duration in seconds for speech recording
+SPEECH_RECOGNITION_DURATION = 10  # Duration in seconds for speech recording
 SPEECH_SAMPLE_RATE = 16000  # Sample rate for speech recording
 
 # API Keys (load from environment variables)
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+if not GROQ_API_KEY:
+    raise ValueError("❌ GROQ_API_KEY is not set in the environment or .env file.")
+
+# Log the loaded API key (safely masked)
+print(f"✅ GROQ_API_KEY loaded: {GROQ_API_KEY[:5]}...***")
+
+# Redis settings
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "")
+# Add ENABLE_CACHE flag
+ENABLE_CACHE = os.getenv("ENABLE_CACHE", "true").lower() == "true"
+
+# ML Model settings
+INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD = 0.6
+NER_CONFIDENCE_THRESHOLD = 0.7
+MAX_EMBEDDING_CACHE_SIZE = 3000  # Maximum number of embeddings to cache
+
+# Document versioning settings
+MAX_DOCUMENT_VERSIONS = 5
+DOCUMENT_BACKUP_DIR = DATA_DIR / "backups"
+AUTO_REINDEX_ON_UPDATE = True
 
 # UI settings
 DEFAULT_THEME = "light"

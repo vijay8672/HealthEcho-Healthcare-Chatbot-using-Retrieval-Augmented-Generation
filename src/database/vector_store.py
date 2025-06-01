@@ -1,166 +1,221 @@
 """
-Vector database for storing and retrieving document embeddings.
+Vector store for document embeddings.
 """
 import os
+import json
 import numpy as np
-import faiss
-from typing import List, Dict, Any, Tuple, Optional
 from pathlib import Path
+from typing import List, Dict, Any, Optional
 
 from ..utils.logger import get_logger
-from .models import DocumentModel, VectorIndexModel
-from ..config import EMBEDDINGS_DIR, VECTOR_DIMENSION
+# from ..utils.faiss_utils import initialize_faiss, get_faiss_index # Remove these imports
+from ..config import DATA_DIR, VECTOR_DIMENSION
+from ..core.resources import GlobalResources # Import GlobalResources
 
 logger = get_logger(__name__)
 
 class VectorStore:
-    """Manages vector storage and retrieval using FAISS."""
-
-    def __init__(self, index_name: str = "default", dimension: int = VECTOR_DIMENSION):
+    """Store and retrieve document embeddings using FAISS."""
+    
+    def __init__(self, dimension: int = VECTOR_DIMENSION):
         """
         Initialize the vector store.
-
+        
         Args:
-            index_name: Name of the vector index
-            dimension: Dimension of the embedding vectors
+            dimension: Dimension of the embeddings
         """
-        self.index_name = index_name
         self.dimension = dimension
-        self.doc_model = DocumentModel()
-        self.index_model = VectorIndexModel()
-        self.index_path = EMBEDDINGS_DIR / f"{index_name}.index"
-        self.id_map_path = EMBEDDINGS_DIR / f"{index_name}_id_map.npy"
-
-        # Load or create the index
-        self.index, self.id_map = self._load_or_create_index()
-
-    def _load_or_create_index(self) -> Tuple[faiss.Index, np.ndarray]:
-        """Load existing index or create a new one."""
-        if os.path.exists(self.index_path):
-            try:
-                # Load existing index
-                index = faiss.read_index(str(self.index_path))
-                id_map = np.load(self.id_map_path)
-                logger.info(f"Loaded existing index '{self.index_name}' with {index.ntotal} vectors")
-                return index, id_map
-            except Exception as e:
-                logger.error(f"Error loading index: {e}")
-
-        # Create new index - use CPU-optimized index
-        # For small datasets, IndexFlatIP is fine
-        # For larger datasets, use a more efficient index type
-        if os.environ.get('USE_EFFICIENT_INDEX', 'true').lower() == 'true':
-            # Create a more CPU-efficient index for larger datasets
-            # This uses a quantizer for better memory usage and faster search
-            quantizer = faiss.IndexFlatIP(self.dimension)
-            index = faiss.IndexIVFFlat(quantizer, self.dimension, 100)  # 100 centroids
-            # Need to train the index with some data before using
-            # We'll train it when we add the first batch of embeddings
-            index.nprobe = 10  # Number of clusters to visit during search (trade-off between speed and accuracy)
+        # Get the singleton FAISS index
+        self.index = GlobalResources.get_faiss_index(dimension)
+        self.documents = []
+        self.vectors = np.zeros((0, dimension))  # Store vectors in memory
+        
+        # Load existing documents and vectors
+        self._load_documents()
+        
+        # Log initialization state
+        if self.index is not None:
+            logger.info(f"FAISS index initialized with {self.index.ntotal} vectors")
         else:
-            # Simple index for small datasets
-            index = faiss.IndexFlatIP(self.dimension)
-
-        id_map = np.array([], dtype=np.int64)
-        logger.info(f"Created new index '{self.index_name}' with dimension {self.dimension}")
-        return index, id_map
-
-    def save_index(self):
-        """Save the index to disk."""
-        try:
-            # Create directory if it doesn't exist
-            os.makedirs(EMBEDDINGS_DIR, exist_ok=True)
-
-            # Save the index
-            faiss.write_index(self.index, str(self.index_path))
-            np.save(self.id_map_path, self.id_map)
-
-            # Update metadata
-            self.index_model.save_index_metadata(
-                index_name=self.index_name,
-                dimension=self.dimension,
-                num_vectors=self.index.ntotal
-            )
-
-            logger.info(f"Saved index '{self.index_name}' with {self.index.ntotal} vectors")
-        except Exception as e:
-            logger.error(f"Error saving index: {e}")
-
-    def add_embeddings(self, embeddings: np.ndarray, doc_ids: List[int]):
+            logger.error("Failed to initialize FAISS index")
+            
+        logger.info(f"Vector store initialized with {len(self.documents)} documents")
+        
+    def _load_documents(self):
         """
-        Add embeddings to the index.
+        Load existing documents from disk.
 
+        This method now relies on the index being initialized externally.
+        """
+        try:
+            if self.index is None:
+                 logger.warning("FAISS index not available, skipping document loading.")
+                 return
+
+            # Load documents from embeddings directory
+            docs_path = DATA_DIR / "embeddings" / "documents.json"
+            if docs_path.exists():
+                with open(docs_path, 'r', encoding='utf-8') as f:
+                    self.documents = json.load(f)
+                logger.info(f"Loaded {len(self.documents)} documents from disk")
+
+                # Load vectors from embeddings directory
+                vectors_path = DATA_DIR / "embeddings" / "vectors.npy"
+                if vectors_path.exists():
+                    self.vectors = np.load(vectors_path)
+                    if len(self.vectors) == len(self.documents):
+                        # Only add vectors to index if it's empty
+                        if self.index.ntotal == 0:
+                            self.index.add(self.vectors)
+                            logger.info(f"Added {len(self.vectors)} vectors to FAISS index")
+                            logger.info(f"FAISS index now contains {self.index.ntotal} vectors")
+                        else:
+                            logger.info(f"FAISS index already contains {self.index.ntotal} vectors, skipping vector loading")
+                    else:
+                        logger.error(f"Vector count mismatch: {len(self.vectors)} vectors vs {len(self.documents)} documents")
+                else:
+                    logger.warning("No vectors file found on disk")
+            else:
+                logger.warning("No documents file found on disk")
+
+        except Exception as e:
+            logger.error(f"Error loading documents: {str(e)}", exc_info=True)
+            
+    def add_documents(self, documents: List[Dict[str, Any]], vectors: np.ndarray):
+        """
+        Add documents and their embeddings to the store.
+        
         Args:
-            embeddings: Array of embedding vectors (shape: n x dimension)
-            doc_ids: List of document IDs corresponding to the embeddings
+            documents: List of document dictionaries
+            vectors: Numpy array of document embeddings
         """
-        if len(embeddings) != len(doc_ids):
-            raise ValueError("Number of embeddings must match number of document IDs")
-
         try:
-            # Normalize vectors for cosine similarity
-            faiss.normalize_L2(embeddings)
-
-            # Check if we need to train the index (for IVF indexes)
-            if isinstance(self.index, faiss.IndexIVFFlat) and not self.index.is_trained:
-                logger.info(f"Training index with {len(embeddings)} vectors")
-                self.index.train(embeddings)
-
-            # Add to index
-            self.index.add(embeddings)
-
-            # Update ID mapping
-            self.id_map = np.append(self.id_map, doc_ids)
-
-            # Save updated index
-            self.save_index()
-
-            logger.info(f"Added {len(embeddings)} embeddings to index '{self.index_name}'")
+            if self.index is None:
+                logger.error("FAISS index not initialized")
+                return
+                
+            # Verify vector dimensions
+            if vectors.shape[1] != self.dimension:
+                logger.error(f"Vector dimension mismatch: expected {self.dimension}, got {vectors.shape[1]}")
+                return
+                
+            # Log pre-addition state
+            logger.info(f"Adding {len(documents)} documents and {len(vectors)} vectors")
+            logger.info(f"Current FAISS index size: {self.index.ntotal} vectors")
+                
+            # Add vectors to index
+            self.index.add(vectors)
+            
+            # Store vectors in memory
+            self.vectors = np.vstack([self.vectors, vectors])
+            
+            # Add documents to list
+            self.documents.extend(documents)
+            
+            # Log post-addition state
+            logger.info(f"Added {len(vectors)} vectors to FAISS index")
+            logger.info(f"FAISS index now contains {self.index.ntotal} vectors")
+            logger.info(f"Total documents in store: {len(self.documents)}")
+            
+            # Save to disk
+            self._save_to_disk()
+            
         except Exception as e:
-            logger.error(f"Error adding embeddings: {e}")
-
-    def search(self, query_embedding: np.ndarray, top_k: int = 5) -> List[Dict[str, Any]]:
+            logger.error(f"Error adding documents: {str(e)}", exc_info=True)
+            
+    def search(self, query_embedding: np.ndarray, top_k=5) -> List[Dict[str, Any]]:
         """
-        Search for similar vectors.
-
+        Search for similar documents using a query embedding.
+        
         Args:
             query_embedding: Query embedding vector
             top_k: Number of results to return
-
+            
         Returns:
-            List of document dictionaries with similarity scores
+            List of similar documents with their scores
         """
-        if self.index.ntotal == 0:
-            logger.warning("Index is empty, no results to return")
-            return []
-
         try:
-            # Reshape and normalize query vector
-            query_embedding = query_embedding.reshape(1, -1).astype(np.float32)
-            faiss.normalize_L2(query_embedding)
-
+            if self.index is None:
+                logger.error("FAISS index not initialized")
+                return []
+                
+            if len(self.documents) == 0:
+                logger.warning("No documents available for search")
+                return []
+                
+            # Ensure query embedding is 2D
+            if query_embedding.ndim == 1:
+                query_embedding = query_embedding.reshape(1, -1)
+                
+            # Verify query embedding dimension
+            if query_embedding.shape[1] != self.dimension:
+                logger.error(f"Query embedding dimension mismatch: expected {self.dimension}, got {query_embedding.shape[1]}")
+                return []
+                
             # Search index
-            similarities, indices = self.index.search(query_embedding, min(top_k, self.index.ntotal))
-
-            # Get document IDs from the mapping
-            doc_ids = [int(self.id_map[idx]) for idx in indices[0] if idx >= 0 and idx < len(self.id_map)]
-
-            # Retrieve documents
+            distances, indices = self.index.search(query_embedding, top_k)
+            
+            # Get documents
             results = []
-            for i, doc_id in enumerate(doc_ids):
-                doc = self.doc_model.get_document(doc_id)
-                if doc:
-                    results.append({
-                        "id": doc_id,
-                        "title": doc["title"],
-                        "content": doc["content"],
-                        "source_file": doc["source_file"],
-                        "score": float(similarities[0][i])
-                    })
-
-            logger.info(f"Found {len(results)} similar documents for query")
+            total_chars = 0
+            sources = set()
+            
+            for i, idx in enumerate(indices[0]):
+                if idx < len(self.documents):
+                    doc = self.documents[idx].copy()
+                    doc['score'] = float(distances[0][i])
+                    results.append(doc)
+                    
+                    # Track context statistics
+                    total_chars += len(doc['content'])
+                    sources.add(doc['source_file'])
+            
+            # Log retrieval statistics
+            logger.info(f"Retrieved {len(results)} chunks from {len(sources)} sources")
+            logger.info(f"Total context length: {total_chars} characters")
+            
+            if not results:
+                logger.warning("No relevant documents found for the query")
+                
             return results
-
+            
         except Exception as e:
-            logger.error(f"Error searching index: {e}")
+            logger.error(f"Error searching documents: {e}", exc_info=True)
             return []
+            
+    def _save_to_disk(self):
+        """Save documents and vectors to disk."""
+        try:
+            if self.index is None:
+                logger.warning("FAISS index not available, skipping save to disk.")
+                return
+
+            # Create embeddings directory if it doesn't exist
+            embeddings_dir = DATA_DIR / "embeddings"
+            embeddings_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Save documents to embeddings directory
+            docs_path = embeddings_dir / "documents.json"
+            with open(docs_path, 'w', encoding='utf-8') as f:
+                json.dump(self.documents, f, ensure_ascii=False, indent=2)
+                
+            # Save vectors to embeddings directory
+            if len(self.vectors) > 0:
+                vectors_path = embeddings_dir / "vectors.npy"
+                np.save(vectors_path, self.vectors)
+                logger.info(f"Saved {len(self.vectors)} vectors to disk")
+                
+        except Exception as e:
+            logger.error(f"Error saving to disk: {e}", exc_info=True)
+            
+    def clear(self):
+        """Clear all documents and vectors."""
+        try:
+            # Ensure index is available before resetting
+            if self.index is not None:
+                self.index.reset()
+            self.documents = []
+            self.vectors = np.zeros((0, self.dimension))
+            self._save_to_disk()
+        except Exception as e:
+            logger.error(f"Error clearing vector store: {e}", exc_info=True)

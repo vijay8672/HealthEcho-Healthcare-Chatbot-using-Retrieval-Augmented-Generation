@@ -34,6 +34,7 @@ var/
 wheels/
 share/python-wheels/
 *.egg-info/
+multi_model_rag_chatbot.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
@@ -144,6 +145,7 @@ celerybeat.pid
 .venv
 env/
 venv/
+venv
 ENV/
 env.bak/
 venv.bak/

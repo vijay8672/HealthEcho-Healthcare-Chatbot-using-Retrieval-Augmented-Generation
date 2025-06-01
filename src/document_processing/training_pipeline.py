@@ -113,7 +113,7 @@ class TrainingPipeline:
                     result = future.result()
                     processed_count += result
                 except Exception as e:
-                    logger.error(f"Error processing file: {e}")
+                    logger.error(f"Error processing file: {e}", exc_info=True)
 
         logger.info(f"Processed {processed_count} documents")
         return processed_count
@@ -132,18 +132,22 @@ class TrainingPipeline:
             # Extract text from file
             logger.info(f"Processing file: {file_path}")
             document = FileProcessor.process_file(file_path)
+            logger.info(f"Extracted {len(document['content'])} characters from {file_path}")
 
             # Split into chunks
             document_chunks = self.chunker.chunk_document(document)
+            logger.info(f"Split {file_path} into {len(document_chunks)} chunks")
 
             # Process in smaller batches to reduce memory usage
             batch_size = 10  # Process 10 chunks at a time
             total_chunks = len(document_chunks)
             processed_chunks = 0
+            total_embeddings = 0
 
             for i in range(0, total_chunks, batch_size):
                 batch_end = min(i + batch_size, total_chunks)
                 current_batch = document_chunks[i:batch_end]
+                logger.info(f"Processing batch {i//batch_size + 1}/{(total_chunks + batch_size - 1)//batch_size}")
 
                 # Save chunks to database
                 chunk_ids = []
@@ -156,13 +160,18 @@ class TrainingPipeline:
                     )
                     chunk["id"] = chunk_id
                     chunk_ids.append(chunk_id)
+                logger.info(f"Saved {len(chunk_ids)} chunks to database")
 
                 # Generate embeddings for this batch
                 embedding_result = self.embedding_generator.generate_embeddings(current_batch)
                 embeddings = embedding_result["embeddings"]
+                total_embeddings += len(embeddings)
+                logger.info(f"Generated {len(embeddings)} embeddings with dimension {embeddings.shape[1]}")
 
                 # Add embeddings to vector store
-                self.vector_store.add_embeddings(embeddings, chunk_ids)
+                self.vector_store.add_documents(current_batch, embeddings)
+                logger.info(f"Added {len(current_batch)} documents to vector store")
+                logger.info(f"Current FAISS index size: {self.vector_store.index.ntotal} vectors")
 
                 processed_chunks += len(current_batch)
                 logger.info(f"Processed batch {i//batch_size + 1}/{(total_chunks + batch_size - 1)//batch_size}: "
@@ -176,13 +185,15 @@ class TrainingPipeline:
             with open(processed_path, 'w') as f:
                 f.write(f"Processed: {file_path}\n")
                 f.write(f"Chunks: {total_chunks}\n")
+                f.write(f"Embeddings: {total_embeddings}\n")
                 f.write(f"Processed on: {datetime.datetime.now().isoformat()}\n")
 
-            logger.info(f"Successfully processed {file_path} into {total_chunks} chunks")
+            logger.info(f"Successfully processed {file_path} into {total_chunks} chunks with {total_embeddings} embeddings")
+            logger.info(f"Final FAISS index size: {self.vector_store.index.ntotal} vectors")
             return total_chunks
 
         except Exception as e:
-            logger.error(f"Error processing file {file_path}: {e}")
+            logger.error(f"Error processing file {file_path}: {e}", exc_info=True)
             return 0
 
     def process_hr_files(self, hr_files_dir: Path, force_reprocess: bool = False) -> int:
@@ -200,4 +211,12 @@ class TrainingPipeline:
             logger.error(f"HR files directory not found: {hr_files_dir}")
             return 0
 
-        return self.process_directory(hr_files_dir, force_reprocess=force_reprocess)
+        return self.process_directory(directory=hr_files_dir, force_reprocess=force_reprocess)
+
+if __name__ == "__main__":
+    # Initialize the training pipeline
+    pipeline = TrainingPipeline()
+    
+    # Process all files in the raw directory, forcing reprocess
+    processed_count = pipeline.process_directory(directory=RAW_DIR, force_reprocess=True)
+    print(f"Processed {processed_count} documents")

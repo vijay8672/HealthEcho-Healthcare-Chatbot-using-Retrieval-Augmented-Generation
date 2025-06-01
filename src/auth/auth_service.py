@@ -59,7 +59,7 @@ class AuthService:
             logger.error(f"Error verifying password: {e}")
             return False
     
-    def register_user(self, email: str, password: str, full_name: str, company_name: str = None) -> Dict[str, Any]:
+    def register_user(self, email: str, password: str, full_name: str, employee_id: str = None) -> Dict[str, Any]:
         """
         Register a new user.
         
@@ -67,7 +67,7 @@ class AuthService:
             email: User's email address
             password: User's password
             full_name: User's full name
-            company_name: User's company name (optional)
+            employee_id: User's employee ID (optional)
             
         Returns:
             A dictionary with the result of the registration
@@ -89,7 +89,7 @@ class AuthService:
                 email=email,
                 password_hash=password_hash,
                 full_name=full_name,
-                company_name=company_name
+                employee_id=employee_id
             )
             
             if user_id:
@@ -151,7 +151,7 @@ class AuthService:
                     "id": user['id'],
                     "email": user['email'],
                     "full_name": user['full_name'],
-                    "company_name": user['company_name']
+                    "employee_id": user.get('employee_id')
                 }
             }
         except Exception as e:

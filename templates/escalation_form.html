@@ -1,0 +1,257 @@
+<!-- HR Escalation Form Modal -->
+<div id="escalationModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Escalate Issue to HR</h2>
+            <span class="close">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="escalationForm">
+                <div class="form-group">
+                    <label for="userDetails">Your Details:</label>
+                    <div id="userDetails" class="user-details-box">
+                        <!-- Will be populated dynamically -->
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="hrPerson">Select HR Representative:</label>
+                    <select id="hrPerson" name="hrPerson" required>
+                        <option value="">Select HR Representative</option>
+                        <!-- Will be populated dynamically -->
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="issueType">Issue Type:</label>
+                    <select id="issueType" name="issueType" required>
+                        <option value="">Select Issue Type</option>
+                        <option value="policy">Policy Related</option>
+                        <option value="benefits">Benefits</option>
+                        <option value="workplace">Workplace Issue</option>
+                        <option value="compensation">Compensation</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="issueDescription">Issue Description:</label>
+                    <textarea id="issueDescription" name="issueDescription" rows="3" required 
+                              placeholder="Please describe your issue in detail..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="priority">Priority Level:</label>
+                    <select id="priority" name="priority" required>
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                        <option value="urgent">Urgent</option>
+                    </select>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">Submit Escalation</button>
+                    <button type="button" class="btn-secondary" id="cancelEscalation">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Base modal styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    background-color: var(--modal-bg, #ffffff);
+    margin: 3% auto;
+    padding: 16px;
+    border: 1px solid var(--modal-border, #ddd);
+    width: 90%;
+    max-width: 500px;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--modal-border, #eee);
+}
+
+.modal-header h2 {
+    font-size: 1.25rem;
+    margin: 0;
+    color: var(--text-primary, #333);
+}
+
+.close {
+    color: var(--text-secondary, #666);
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 0 4px;
+}
+
+.close:hover {
+    color: var(--text-primary, #333);
+}
+
+/* Form styles */
+.form-group {
+    margin-bottom: 12px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-secondary, #333);
+}
+
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid var(--input-border, #ddd);
+    border-radius: 4px;
+    font-size: 0.9rem;
+    background-color: var(--input-bg, #fff);
+    color: var(--text-primary, #333);
+}
+
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--primary-color, #007bff);
+    box-shadow: 0 0 0 2px var(--primary-color-light, rgba(0,123,255,0.25));
+}
+
+.user-details-box {
+    background-color: var(--details-bg, #f8f9fa);
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid var(--details-border, #ddd);
+    font-size: 0.9rem;
+    color: var(--text-primary, #666);
+}
+
+.user-details-box div {
+    margin-bottom: 4px;
+}
+
+.user-details-box div:last-child {
+    margin-bottom: 0;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.btn-primary,
+.btn-secondary {
+    padding: 6px 16px;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.btn-primary {
+    background-color: var(--primary-color, #007bff);
+    color: white;
+}
+
+.btn-secondary {
+    background-color: var(--secondary-color, #6c757d);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-color-dark, #0056b3);
+}
+
+.btn-secondary:hover {
+    background-color: var(--secondary-color-dark, #5a6268);
+}
+
+/* Dark mode styles */
+@media (prefers-color-scheme: dark) {
+    .modal-content {
+        --modal-bg: #1a1a1a;
+        --modal-border: #333;
+        --text-primary: #fff;
+        --text-secondary: #bbb;
+        --input-bg: #222;
+        --input-border: #444;
+        --details-bg: #222;
+        --details-border: #444;
+        --primary-color: #0d6efd;
+        --primary-color-dark: #0b5ed7;
+        --primary-color-light: rgba(13,110,253,0.25);
+        --secondary-color: #6c757d;
+        --secondary-color-dark: #5a6268;
+    }
+
+    /* Explicit and highly specific dark mode styles for escalation form */
+    #escalationModal .modal-header h2 {
+        color: #fff !important;
+    }
+
+    #escalationModal .form-group label {
+        color: var(--text-secondary) !important;
+    }
+
+    #escalationModal .form-group select,
+    #escalationModal .form-group textarea,
+    #escalationModal .user-details-box input[type="text"],
+    #escalationModal .user-details-box input[type="email"] {
+        background-color: var(--input-bg) !important;
+        color: var(--text-primary) !important;
+        border-color: var(--input-border) !important;
+    }
+
+    #escalationModal .user-details-box {
+        background-color: var(--details-bg) !important;
+        border-color: var(--details-border) !important;
+        color: var(--text-primary) !important;
+    }
+}
+
+/* Light mode styles */
+@media (prefers-color-scheme: light) {
+    .modal-content {
+        --modal-bg: #ffffff;
+        --modal-border: #ddd;
+        --text-primary: #333;
+        --text-secondary: #666;
+        --input-bg: #fff;
+        --input-border: #ddd;
+        --details-bg: #f8f9fa;
+        --details-border: #ddd;
+        --primary-color: #007bff;
+        --primary-color-dark: #0056b3;
+        --primary-color-light: rgba(0,123,255,0.25);
+        --secondary-color: #6c757d;
+        --secondary-color-dark: #5a6268;
+    }
+}
+</style> 

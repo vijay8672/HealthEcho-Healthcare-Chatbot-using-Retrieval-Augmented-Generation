@@ -1,44 +1,53 @@
-# Core dependencies
-flask==3.1.0
-flask_cors==5.0.0
-pydantic==2.10.6
-python-dotenv==1.0.1
-requests==2.32.3
-PyJWT==2.8.0
+# ───────────── Web Frameworks ─────────────
+flask==3.0.0
+flask-cors==4.0.0
+python-dotenv==1.0.0
 
-# LLM and embeddings
-groq==0.16.0
-langchain-groq==0.2.4
-langchain_core==0.3.33
-langchain_huggingface==0.1.2
-sentence-transformers==3.4.1
-transformers==4.48.2
+# ───────────── Langchain & Integrations ─────────────
+Langchain
+langchain-core
+langchain-community==0.0.38
+langsmith
+langchain-groq
 
-# Vector search
-faiss-cpu==1.10.0
-numpy==1.26.4
+# ───────────── NLP & Embeddings ─────────────
+sentence-transformers>=2.6.0
+huggingface-hub>=0.23.0
 
-# Document processing
-beautifulsoup4==4.13.1
-markdown==3.7
-python-docx==1.1.0
-pymupdf==1.23.8
+# FAISS (AVX2-optimized build)
+faiss-cpu==1.11.0  # Must install manually with: pip install --no-deps faiss-cpu -f https://dl.fbaipublicfiles.com/faiss/python/wheels/avx2/
 
-# Speech processing
-whisper==1.1.10
-openai-whisper==20231117
-pyttsx3==2.90
-sounddevice==0.4.6
+# ───────────── Core Libraries ─────────────
+numpy==1.24.3
+pandas>=2.0.3,<3.0.0
+scikit-learn==1.3.0
+spacy==3.7.2
 
-# Language detection
-langdetect==1.0.9
+# ───────────── Caching / Persistence ─────────────
+redis==5.0.1
+joblib==1.3.2
 
-# Database
-sqlalchemy==2.0.27
+# ───────────── File Parsing ─────────────
+python-magic==0.4.27
+python-magic-bin==0.4.14
+PyPDF2==3.0.1
+python-docx==1.0.1
+openpyxl==3.1.2
+pymupdf
 
-# Utilities
-tqdm==4.66.2
-email-validator==2.1.1
+# ───────────── Utilities ─────────────
+markdown==3.5
+python-dateutil==2.8.2
+pytz==2023.3
+requests==2.31.0
+tqdm==4.66.1
 
-# Email
-secure-smtplib==0.2.1
+# ───────────── Testing ─────────────
+pytest==7.4.3
+pytest-cov==4.1.0
+
+# ───────────── Dev & Linting ─────────────
+black==23.11.0
+flake8==6.1.0
+isort==5.12.0
+mypy==1.7.0

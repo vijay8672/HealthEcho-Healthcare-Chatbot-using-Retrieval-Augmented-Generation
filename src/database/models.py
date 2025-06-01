@@ -76,7 +76,7 @@ class Database:
                 email TEXT NOT NULL UNIQUE,
                 password_hash TEXT NOT NULL,
                 full_name TEXT NOT NULL,
-                company_name TEXT,
+                employee_id TEXT UNIQUE,
                 created_at TIMESTAMP NOT NULL,
                 last_login TIMESTAMP
             )
@@ -116,6 +116,31 @@ class ConversationModel:
             ))
             conn.commit()
             return cursor.lastrowid
+
+    def get_chat_messages(self, chat_id: str, offset: int = 0, limit: int = 20) -> List[Dict[str, Any]]:
+        """Get paginated messages for a specific chat."""
+        with self.db._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+            SELECT * FROM conversations
+            WHERE device_id = ?
+            ORDER BY query_timestamp DESC
+            LIMIT ? OFFSET ?
+            ''', (chat_id, limit, offset))
+
+            # Convert rows to dictionaries
+            return [dict(row) for row in cursor.fetchall()]
+
+    def get_chat_message_count(self, chat_id: str) -> int:
+        """Get total number of messages in a chat."""
+        with self.db._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+            SELECT COUNT(*) as count FROM conversations
+            WHERE device_id = ?
+            ''', (chat_id,))
+            result = cursor.fetchone()
+            return result['count'] if result else 0
 
     def get_conversations(self, device_id: str, limit: int = 10) -> List[Dict[str, Any]]:
         """Get conversation history for a device."""
@@ -231,20 +256,20 @@ class UserModel:
         """Initialize the user model."""
         self.db = Database()
 
-    def create_user(self, email: str, password_hash: str, full_name: str, company_name: str = None) -> int:
+    def create_user(self, email: str, password_hash: str, full_name: str, employee_id: str = None) -> int:
         """Create a new user."""
         with self.db._get_connection() as conn:
             cursor = conn.cursor()
             try:
                 cursor.execute('''
                 INSERT INTO users
-                (email, password_hash, full_name, company_name, created_at)
+                (email, password_hash, full_name, employee_id, created_at)
                 VALUES (?, ?, ?, ?, ?)
                 ''', (
                     email,
                     password_hash,
                     full_name,
-                    company_name,
+                    employee_id,
                     datetime.now().isoformat()
                 ))
                 conn.commit()

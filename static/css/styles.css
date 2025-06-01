@@ -194,8 +194,20 @@ p, li, span, div {
 
 .sidebar-conversations {
     flex: 1;
-    overflow-y: auto;
+    overflow-y: scroll !important;
+    scrollbar-width: thin;
+    scrollbar-color: #d1d5db #f3f4f6;
     padding: 0 8px;
+}
+
+.sidebar-conversations::-webkit-scrollbar {
+    width: 8px;
+    background: #f3f4f6;
+}
+
+.sidebar-conversations::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 4px;
 }
 
 .sidebar-bottom {
@@ -272,6 +284,7 @@ p, li, span, div {
     flex-direction: column;
     gap: 2px;
     padding: 8px 0;
+    padding-top: 0;
 }
 
 .chat-history-item {
@@ -300,6 +313,28 @@ p, li, span, div {
     background-color: var(--sidebar-item-active);
     border-left: 3px solid var(--sidebar-accent);
     font-weight: 700;
+}
+
+.chat-history-header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--sidebar-bg);
+    padding: 10px 16px;
+    margin-top: 0;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--sidebar-border);
+}
+
+.chat-history-item-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+}
+
+.chat-history-header + .chat-history-item {
+    margin-top: 2px;
 }
 
 .upload-status {
@@ -438,14 +473,23 @@ input:checked + .slider:before {
     background-color: var(--bg-secondary);
 }
 
+/* Modern always-visible scrollbar for chat area */
 .chat-messages {
-    flex: 1;
-    overflow-y: auto;
-    background-color: var(--bg-primary);
-    display: flex;
-    flex-direction: column;
-    scroll-behavior: smooth;
-    padding-bottom: 80px; /* Fixed padding to accommodate input box */
+    overflow-y: scroll;
+    scrollbar-width: thin;
+    scrollbar-color: #d1d5db #f3f4f6;
+    padding-bottom: 120px;
+}
+.chat-messages::-webkit-scrollbar {
+    width: 8px;
+    background: #f3f4f6;
+}
+.chat-messages::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 4px;
+}
+.theme-dark .chat-messages::-webkit-scrollbar-thumb {
+    background: #444654;
 }
 
 .welcome-container {
@@ -1284,5 +1328,59 @@ input:checked + .slider:before {
         left: 20px;
         right: 20px;
         max-width: calc(100% - 40px);
+    }
+}
+
+.virtual-scroll-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-height: 100%;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.virtual-scroll-container .message {
+    margin-bottom: 20px;
+    opacity: 0;
+    transform: translateY(20px);
+    animation: fadeInUp 0.3s ease forwards;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Loading indicator for infinite scroll */
+.loading-messages {
+    text-align: center;
+    padding: 10px;
+    color: #666;
+    font-size: 14px;
+}
+
+.loading-messages::after {
+    content: '';
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #666;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s linear infinite;
+    margin-left: 10px;
+    vertical-align: middle;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
     }
 }

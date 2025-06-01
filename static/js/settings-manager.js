@@ -92,7 +92,12 @@ const defaultSettings = {
     voiceEnabled: false,
     alwaysShowCode: false,
     showSuggestions: true,
-    archivedChats: []
+    archivedChats: [],
+    personal: {
+        fullName: '',
+        email: '',
+        employeeId: ''
+    }
 };
 
 // Initialize settings
@@ -114,6 +119,9 @@ let logoutAllDevicesBtn;
 let closeSettingsBtn;
 let saveSettingsBtn;
 let closeSettingsModalBtn;
+let personalFullNameInput;
+let personalEmailInput;
+let personalEmployeeIdInput;
 
 
 // Initialize settings manager
@@ -148,7 +156,10 @@ function initSettingsManager() {
         enableMFABtn = document.getElementById('enableMFA');
         logoutAllDevicesBtn = document.getElementById('logoutAllDevices');
 
-
+        // Personal settings
+        personalFullNameInput = document.getElementById('personalFullName');
+        personalEmailInput = document.getElementById('personalEmail');
+        personalEmployeeIdInput = document.getElementById('personalEmployeeId');
 
         // Modal controls
         closeSettingsBtn = document.getElementById('closeSettings');
@@ -393,8 +404,6 @@ function setupSettingsEventListeners() {
             logoutAllDevicesBtn.addEventListener('click', logoutAllDevices);
         }
 
-
-
         // Close settings modal using the X button
         if (closeSettingsModalBtn) {
             closeSettingsModalBtn.addEventListener('click', closeSettingsModal);
@@ -406,6 +415,28 @@ function setupSettingsEventListeners() {
                 closeSettingsModal();
             }
         });
+
+        // Personal settings inputs
+        if (personalFullNameInput) {
+            personalFullNameInput.addEventListener('input', (e) => {
+                appSettings.personal.fullName = e.target.value;
+                saveSettings(appSettings);
+            });
+        }
+
+        if (personalEmailInput) {
+            personalEmailInput.addEventListener('input', (e) => {
+                appSettings.personal.email = e.target.value;
+                saveSettings(appSettings);
+            });
+        }
+
+        if (personalEmployeeIdInput) {
+            personalEmployeeIdInput.addEventListener('input', (e) => {
+                appSettings.personal.employeeId = e.target.value;
+                saveSettings(appSettings);
+            });
+        }
     } catch (error) {
         console.error('Error setting up settings event listeners:', error);
     }
@@ -532,6 +563,11 @@ function loadSettingsIntoUI() {
         if (showSuggestionsToggle) {
             showSuggestionsToggle.checked = appSettings.showSuggestions !== false; // Default to true
         }
+
+        // Personal settings
+        if (personalFullNameInput) personalFullNameInput.value = appSettings.personal.fullName || '';
+        if (personalEmailInput) personalEmailInput.value = appSettings.personal.email || '';
+        if (personalEmployeeIdInput) personalEmployeeIdInput.value = appSettings.personal.employeeId || '';
     } catch (error) {
         console.error('Error loading settings into UI:', error);
     }
@@ -549,6 +585,11 @@ function saveSettingsFromUI() {
 
         // Theme and language are handled by dropdown clicks
         // which will call this function with the appropriate values
+
+        // Personal settings
+        if (personalFullNameInput) newSettings.personal.fullName = personalFullNameInput.value;
+        if (personalEmailInput) newSettings.personal.email = personalEmailInput.value;
+        if (personalEmployeeIdInput) newSettings.personal.employeeId = personalEmployeeIdInput.value;
 
         // Save settings
         saveSettings(newSettings);

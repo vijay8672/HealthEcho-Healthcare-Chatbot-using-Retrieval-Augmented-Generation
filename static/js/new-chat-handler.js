@@ -105,6 +105,9 @@ class NewChatHandler {
         try {
             console.log('Starting new chat via centralized handler...');
 
+            // Explicitly set currentChatId to null to ensure a new chat is created on the next message
+            window.currentChatId = null;
+
             // First, clean up any duplicate elements
             this.cleanupDuplicateElements();
 
@@ -113,7 +116,8 @@ class NewChatHandler {
 
             // Generate a new chat ID
             const newChatId = 'chat_' + Date.now();
-            console.log(`Generated new chat ID: ${newChatId}`);
+            console.log(`Generated new chat ID in startNewChat: ${newChatId}`);
+            console.log(`Previous currentChatId in startNewChat: ${window.currentChatId}`);
 
             // Update global variables
             window.currentChatId = newChatId;
@@ -127,6 +131,12 @@ class NewChatHandler {
             // Set a flag to indicate we're starting a new chat
             // This will be used to prevent other functions from hiding the greeting
             window.isStartingNewChat = true;
+
+            // Remove active class from all chat history items in the sidebar
+            const chatItems = document.querySelectorAll('.chat-history-item');
+            chatItems.forEach(item => {
+                item.classList.remove('active');
+            });
 
             // Clear chat messages while preserving the greeting container
             if (this.chatMessages) {

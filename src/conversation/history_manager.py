@@ -97,6 +97,41 @@ class HistoryManager:
         logger.info(f"Retrieved {len(history)} messages from database")
         return history
 
+    def get_chat_messages(self, chat_id: str, page: int = 1, page_size: int = 20) -> List[Dict[str, Any]]:
+        """
+        Get paginated messages for a specific chat.
+
+        Args:
+            chat_id: Chat ID
+            page: Page number (1-based)
+            page_size: Number of messages per page
+
+        Returns:
+            List of messages for the requested page
+        """
+        # Calculate offset
+        offset = (page - 1) * page_size
+
+        # Get messages from database with pagination
+        messages = self.conversation_store.get_chat_messages(chat_id, offset, page_size)
+        
+        logger.info(f"Retrieved {len(messages)} messages for chat {chat_id} (page {page})")
+        return messages
+
+    def get_chat_message_count(self, chat_id: str) -> int:
+        """
+        Get total number of messages in a chat.
+
+        Args:
+            chat_id: Chat ID
+
+        Returns:
+            Total number of messages
+        """
+        count = self.conversation_store.model.get_chat_message_count(chat_id)
+        logger.info(f"Chat {chat_id} has {count} total messages")
+        return count
+
     def clear_history(self, device_id: str) -> None:
         """
         Clear conversation history for a device.

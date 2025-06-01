@@ -344,7 +344,8 @@ function addPreLoginMessage(role, content) {
         if (chatContainer.childElementCount === 0) {
             // This is the first message, hide the welcome container
             welcomeContainer.style.display = 'none';
-
+            // Move input box to bottom
+            movePreLoginInputToBottom();
             // Make chat container take full height
             chatContainer.style.maxHeight = '60vh';
             chatContainer.style.height = '60vh';
@@ -366,6 +367,14 @@ function addPreLoginMessage(role, content) {
 
     // Scroll to the bottom
     chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+// Helper to move the input box to the bottom with space
+function movePreLoginInputToBottom() {
+    const inputContainer = document.querySelector('.pre-login-bottom-input-container');
+    if (inputContainer) {
+        inputContainer.classList.add('pre-login-bottom-fixed');
+    }
 }
 
 /**

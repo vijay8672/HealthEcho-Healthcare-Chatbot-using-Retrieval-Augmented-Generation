@@ -519,3 +519,16 @@ body:not(.not-logged-in) .pre-login-container {
     color: var(--text-secondary);
     padding: 0 0 0 16px;
 }
+
+.pre-login-bottom-fixed {
+    position: fixed !important;
+    left: 50% !important;
+    bottom: 32px !important;
+    top: auto !important;
+    transform: translateX(-50%) !important;
+    margin-top: 0 !important;
+    width: 100% !important;
+    max-width: 768px !important;
+    padding: 0 24px !important;
+    z-index: 10 !important;
+}

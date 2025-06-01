@@ -150,14 +150,13 @@ function hideGreetingMessage() {
             return;
         }
 
-        // First fade out with opacity
+        // Instantly hide the greeting (no fade-out, no delay)
         greetingContainer.style.opacity = '0';
-
-        // Then hide it completely after the transition
-        setTimeout(() => {
-            greetingContainer.style.display = 'none';
-            console.log('Greeting message hidden because chat has messages');
-        }, 300); // Match the transition duration in CSS
+        greetingContainer.style.display = 'none';
+        console.log('Greeting message instantly hidden because chat has messages');
+        if (typeof window.ensureChatInputCentered === 'function') {
+            window.ensureChatInputCentered();
+        }
     } catch (error) {
         console.error('Error hiding greeting message:', error);
     }
