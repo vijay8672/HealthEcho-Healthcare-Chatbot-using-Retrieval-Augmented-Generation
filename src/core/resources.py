@@ -1,3 +1,4 @@
+import os
 import threading
 import warnings
 from typing import Optional
@@ -6,113 +7,100 @@ import faiss
 from transformers import AutoModel, AutoTokenizer
 
 from ..utils.logger import get_logger
-from ..config import EMBEDDING_MODEL_NAME, VECTOR_DIMENSION
+from ..config import EMBEDDING_MODEL_NAME, VECTOR_DIMENSION, FAISS_INDEX_PATH
 
 logger = get_logger(__name__)
 
+
 class GlobalResources:
     """
-    Manages global singleton resources like the FAISS index and embedding model/tokenizer.
-    Ensures resources are initialized only once and reused across the application.
+    Manages global singleton resources: FAISS index, embedding model, tokenizer.
+    Thread-safe, production-ready with disk persistence for FAISS.
     """
 
-    _faiss_index: Optional[object] = None  # FAISS index
-    _embedding_model: Optional[AutoModel] = None  # Hugging Face model
-    _embedding_tokenizer: Optional[AutoTokenizer] = None  # Hugging Face tokenizer
+    _faiss_index: Optional[faiss.Index] = None
+    _embedding_model: Optional[AutoModel] = None
+    _embedding_tokenizer: Optional[AutoTokenizer] = None
     _lock = threading.Lock()
 
     @staticmethod
-    def get_faiss_index(dimension: int = VECTOR_DIMENSION) -> Optional[object]:
-        """Gets the singleton FAISS index instance, initializing it if necessary."""
+    def get_faiss_index(dimension: int = VECTOR_DIMENSION) -> Optional[faiss.Index]:
+        """Get or initialize a singleton FAISS index, with optional disk load."""
         if GlobalResources._faiss_index is None:
             with GlobalResources._lock:
                 if GlobalResources._faiss_index is None:
-                    logger.info("[INIT] Initializing FAISS index...")
                     try:
-                        faiss_module = None
-                        with warnings.catch_warnings():
-                            warnings.simplefilter("ignore")
-                            import faiss
+                        logger.info("[INIT] Loading FAISS index...")
 
-                            try:
-                                import faiss.swigfaiss_avx2
-                                logger.info("[INIT] Loaded FAISS with AVX2 support.")
-                            except ImportError:
-                                logger.info("[INIT] AVX2 not available, using standard FAISS.")
+                        # Try AVX2 version first
+                        try:
+                            import faiss.swigfaiss_avx2  # noqa: F401
+                            logger.info("[INIT] FAISS AVX2 support available.")
+                        except ImportError:
+                            logger.info("[INIT] FAISS AVX2 not available. Using standard FAISS.")
 
-                            faiss_module = faiss
-
-                        if faiss_module is None:
-                            logger.error("[INIT] FAISS module import failed.")
-                            return None
-
-                        index_type = "L2"
-                        if index_type == "L2":
-                            index = faiss_module.IndexFlatL2(dimension)
-                        elif index_type == "IP":
-                            index = faiss_module.IndexFlatIP(dimension)
+                        if FAISS_INDEX_PATH and os.path.exists(FAISS_INDEX_PATH):
+                            index = faiss.read_index(FAISS_INDEX_PATH)
+                            logger.info(f"[INIT] Loaded FAISS index from disk: {FAISS_INDEX_PATH}")
                         else:
-                            logger.error(f"[INIT] Unsupported FAISS index type: {index_type}")
-                            return None
+                            index = faiss.IndexFlatL2(dimension)
+                            logger.warning("[INIT] No FAISS index file found. Initialized new IndexFlatL2.")
 
                         GlobalResources._faiss_index = index
-                        logger.info("[INIT] FAISS index initialized successfully.")
 
                     except Exception as e:
-                        logger.error(f"[INIT] Error during FAISS index initialization: {e}")
-                        GlobalResources._faiss_index = None
-
-        else:
-            logger.debug("[INIT] Reusing existing FAISS index instance.")
+                        logger.exception(f"[ERROR] Failed to initialize FAISS index: {e}")
 
         return GlobalResources._faiss_index
 
     @staticmethod
+    def save_faiss_index():
+        """Save FAISS index to disk if initialized."""
+        if GlobalResources._faiss_index and FAISS_INDEX_PATH:
+            try:
+                faiss.write_index(GlobalResources._faiss_index, FAISS_INDEX_PATH)
+                logger.info(f"[SAVE] FAISS index saved to {FAISS_INDEX_PATH}")
+            except Exception as e:
+                logger.error(f"[SAVE] Failed to save FAISS index: {e}")
+
+    @staticmethod
     def get_embedding_model() -> Optional[AutoModel]:
-        """Gets the singleton Hugging Face embedding model instance."""
+        """Get or initialize Hugging Face embedding model."""
         if GlobalResources._embedding_model is None:
             with GlobalResources._lock:
                 if GlobalResources._embedding_model is None:
-                    logger.info(f"[INIT] Loading Hugging Face model: {EMBEDDING_MODEL_NAME}")
                     try:
+                        logger.info(f"[INIT] Loading embedding model: {EMBEDDING_MODEL_NAME}")
                         model = AutoModel.from_pretrained(EMBEDDING_MODEL_NAME)
                         model.eval()
                         GlobalResources._embedding_model = model
-                        logger.info("[INIT] Embedding model loaded successfully.")
+                        logger.info("[INIT] Model loaded successfully.")
                     except Exception as e:
-                        logger.error(f"[INIT] Failed to load model {EMBEDDING_MODEL_NAME}: {e}")
-                        GlobalResources._embedding_model = None
-
-        else:
-            logger.debug(f"[INIT] Reusing existing model: {EMBEDDING_MODEL_NAME}")
+                        logger.exception(f"[ERROR] Failed to load model {EMBEDDING_MODEL_NAME}: {e}")
 
         return GlobalResources._embedding_model
 
     @staticmethod
     def get_embedding_tokenizer() -> Optional[AutoTokenizer]:
-        """Gets the singleton Hugging Face tokenizer instance."""
+        """Get or initialize tokenizer."""
         if GlobalResources._embedding_tokenizer is None:
             with GlobalResources._lock:
                 if GlobalResources._embedding_tokenizer is None:
-                    logger.info(f"[INIT] Loading tokenizer for: {EMBEDDING_MODEL_NAME}")
                     try:
+                        logger.info(f"[INIT] Loading tokenizer: {EMBEDDING_MODEL_NAME}")
                         tokenizer = AutoTokenizer.from_pretrained(EMBEDDING_MODEL_NAME)
                         GlobalResources._embedding_tokenizer = tokenizer
                         logger.info("[INIT] Tokenizer loaded successfully.")
                     except Exception as e:
-                        logger.error(f"[INIT] Failed to load tokenizer {EMBEDDING_MODEL_NAME}: {e}")
-                        GlobalResources._embedding_tokenizer = None
-
-        else:
-            logger.debug(f"[INIT] Reusing existing tokenizer: {EMBEDDING_MODEL_NAME}")
+                        logger.exception(f"[ERROR] Failed to load tokenizer {EMBEDDING_MODEL_NAME}: {e}")
 
         return GlobalResources._embedding_tokenizer
 
     @staticmethod
     def warm_up_resources():
-        """
-        Placeholder: Warm up model/index if needed to reduce cold start latency.
-        """
-        logger.info("[INIT] Starting warm-up (placeholder).")
-        # Example: encode dummy input or pre-load index file
-        pass
+        """Preload all resources to avoid cold starts."""
+        logger.info("[INIT] Warming up global resources...")
+        GlobalResources.get_embedding_model()
+        GlobalResources.get_embedding_tokenizer()
+        GlobalResources.get_faiss_index()
+        logger.info("[INIT] Warm-up complete.")

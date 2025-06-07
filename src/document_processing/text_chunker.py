@@ -10,16 +10,18 @@ logger = get_logger(__name__)
 class TextChunker:
     """Split documents into chunks for embedding and retrieval."""
     
-    def __init__(self, chunk_size: int = 500, chunk_overlap: int = 100):
+    def __init__(self, chunk_size: int = 1200, chunk_overlap: int = 300, include_overlap_in_chunk: bool = True):
         """
         Initialize the text chunker.
         
         Args:
             chunk_size: Target size of each chunk in characters
             chunk_overlap: Overlap between chunks in characters
+            include_overlap_in_chunk: Whether to include overlap text in the current chunk
         """
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
+        self.include_overlap_in_chunk = include_overlap_in_chunk
     
     def chunk_document(self, document: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
@@ -53,46 +55,46 @@ class TextChunker:
     
     def _split_text(self, text: str) -> List[str]:
         """
-        Split text into chunks with overlap.
-        
-        Args:
-            text: Text to split
-            
-        Returns:
-            List of text chunks
+        Split text into chunks with paragraph-awareness and optional overlap.
         """
-        # Clean and normalize text
-        text = re.sub(r'\s+', ' ', text).strip()
-        
-        # If text is shorter than chunk size, return as is
-        if len(text) <= self.chunk_size:
-            return [text]
-        
+        # Step 1: Paragraph split first (retain structure)
+        paragraphs = text.split('\n\n')
+        paragraphs = [re.sub(r'\s+', ' ', para).strip() for para in paragraphs if para.strip()]
+
         chunks = []
-        start = 0
+        current_chunk = ""
+
+        for para in paragraphs:
+            if len(current_chunk) + len(para) + 2 <= self.chunk_size:
+                current_chunk += para + "\n\n"
+            else:
+                if current_chunk:
+                    chunks.append(current_chunk.strip())
+
+                if len(para) > self.chunk_size:
+                    logger.warning(f"Oversized paragraph of length {len(para)} – will be force-split.")
+                    for i in range(0, len(para), self.chunk_size - self.chunk_overlap):
+                        sub_chunk = para[i:i + self.chunk_size]
+                        chunks.append(sub_chunk.strip())
+                    current_chunk = ""
+                else:
+                    current_chunk = para + "\n\n"
+
+        if current_chunk:
+            chunks.append(current_chunk.strip())
+
+        # Step 2: Overlap logic
+        final_chunks = []
+        for i, chunk in enumerate(chunks):
+            if i > 0 and self.chunk_overlap > 0:
+                overlap = chunks[i - 1][-self.chunk_overlap:]
+                chunk = overlap + chunk if self.include_overlap_in_chunk else chunk
+            final_chunks.append(chunk.strip())
+
+        return final_chunks
+
+
         
-        while start < len(text):
-            # Find the end of the chunk
-            end = start + self.chunk_size
-            
-            if end >= len(text):
-                # Last chunk
-                chunks.append(text[start:])
-                break
-            
-            # Try to find a sentence boundary for a cleaner split
-            sentence_end = self._find_sentence_boundary(text, end)
-            if sentence_end > start:
-                end = sentence_end
-            
-            # Add the chunk
-            chunks.append(text[start:end])
-            
-            # Move to next chunk with overlap
-            start = end - self.chunk_overlap
-        
-        return chunks
-    
     def _find_sentence_boundary(self, text: str, position: int) -> int:
         """
         Find the nearest sentence boundary after the given position.

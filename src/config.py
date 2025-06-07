@@ -17,6 +17,11 @@ PROCESSED_DIR = DATA_DIR / "processed"
 RAW_DIR = DATA_DIR / "raw_files"
 DB_DIR = DATA_DIR / "db"
 MODELS_DIR = DATA_DIR / "models"
+# src/config.py
+
+# Add this if it's missing
+FAISS_INDEX_PATH = "data/faiss_index/index.faiss"  # or wherever your index file should be
+
 
 # Create directories if they don't exist
 for directory in [DATA_DIR, EMBEDDINGS_DIR, PROCESSED_DIR, RAW_DIR, DB_DIR, MODELS_DIR]:
@@ -24,6 +29,11 @@ for directory in [DATA_DIR, EMBEDDINGS_DIR, PROCESSED_DIR, RAW_DIR, DB_DIR, MODE
 
 # Database settings
 DATABASE_PATH = DB_DIR / "chatbot.db"
+# src/config.py
+
+SIMILARITY_THRESHOLD = 0.6  # Already present
+MAX_VECTOR_SEARCH_TOP_K = 20  # ← ADD THIS LINE
+
 
 # Model settings
 EMBEDDING_MODEL_NAME = "sentence-transformers/multi-qa-mpnet-base-dot-v1"
@@ -52,7 +62,9 @@ print(f"✅ GROQ_API_KEY loaded: {GROQ_API_KEY[:5]}...***")
 # Redis settings
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
-REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "")
+REDIS_PASSWORD = None
+
+
 # Add ENABLE_CACHE flag
 ENABLE_CACHE = os.getenv("ENABLE_CACHE", "true").lower() == "true"
 

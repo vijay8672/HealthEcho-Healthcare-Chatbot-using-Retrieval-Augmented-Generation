@@ -165,8 +165,8 @@ body.not-logged-in .not-logged-in-only {
 
 /* Ensure chat input container stays centered in the app container */
 .app-container .chat-input-container {
-    left: 50% !important;
-    transform: translateX(-50%) !important; /* Ensure horizontal centering */
+    left: 50%; /* Keep this for initial centering */
+    transform: translateX(-50%); /* Keep this for centering based on its own width */
     margin-left: 0 !important;
     right: auto !important;
     /* Removed vertical centering from this rule */
@@ -195,11 +195,19 @@ body.not-logged-in .not-logged-in-only {
 }
 
 /* Ensure chat input container stays centered regardless of sidebar state */
-.sidebar.collapsed ~ .chat-container .chat-input-container,
-.sidebar:not(.collapsed) ~ .chat-container .chat-input-container {
+.sidebar.collapsed ~ .chat-container .chat-input-container {
     left: 50% !important;
     margin-left: 0 !important;
     right: auto !important;
+    transform: translateX(-50%) !important; /* Center horizontally only */
+}
+
+.sidebar:not(.collapsed) ~ .chat-container .chat-input-container {
+    /* Adjust left position to account for sidebar width */
+    left: calc(50% + (var(--sidebar-width) / 2)) !important; /* Shift right by half sidebar width */
+    margin-left: 0 !important;
+    right: auto !important;
+    transform: translateX(-50%) !important; /* Center horizontally based on its own width */
 }
 
 /* Apply different transform based on whether welcome message is present */
@@ -408,16 +416,15 @@ body.welcome-removed .chat-input-container {
 /* Chat container styles */
 .chat-container {
     flex: 1;
-    transition: all 0.3s ease;
-    background-color: var(--bg-primary); /* Alabaster White background */
     display: flex;
     flex-direction: column;
-    align-items: center; /* Center the chat messages */
+    /* Removed fixed height and overflow: hidden */
     position: relative;
-    overflow: hidden;
+    background-color: var(--bg-primary);
     width: 100%; /* Full width */
     margin: 0 auto; /* Center horizontally */
-    box-sizing: border-box; /* Include padding and border in the element's width and height */
+    align-items: center; /* Center content horizontally */
+    justify-content: center; /* Center content vertically */
 }
 
 /* Removed the background that extends below the chat input */
@@ -2106,10 +2113,9 @@ input:checked + .slider:before {
     flex: 1;
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    /* Removed fixed height and overflow: hidden */
     position: relative;
     background-color: var(--bg-primary);
-    overflow: hidden;
     width: 100%; /* Full width */
     margin: 0 auto; /* Center horizontally */
     align-items: center; /* Center content horizontally */
@@ -2316,7 +2322,7 @@ input:checked + .slider:before {
     display: flex;
     flex-direction: column;
     scroll-behavior: smooth;
-    padding-bottom: 120px; /* Increased padding to accommodate vertically centered input box */
+    padding-bottom: 150px; /* Increased padding to ensure space for fixed input */
     position: relative;
     max-width: 768px; /* Match the max-width of the input container */
     width: 90%; /* Match the width of the input container */
@@ -2704,13 +2710,13 @@ input:checked + .slider:before {
     left: 50%; /* Center horizontally */
     transform: translateX(-50%); /* Adjust for centering */
     padding: 0;
-    background-color: var(--input-bg); /* Pure white background */
+    background-color: var(--bg-primary) !important; /* Use primary background color with full opacity */
     border: 1px solid var(--input-border);
     border-radius: 16px;
-    z-index: 10;
-    min-height: auto;
-    max-width: 768px; /* Slightly reduced max-width for better proportions */
-    width: 90%;
+    z-index: 100; /* Increased z-index to ensure it's on top */
+    min-height: 60px; /* Give it a minimum height */
+    max-width: 800px; /* Increase max-width slightly */
+    width: 95%; /* Increase width */
     box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05), 0 2px 6px rgba(0, 0, 0, 0.05); /* Refined shadow */
     overflow: visible;
     outline: none;
@@ -2863,7 +2869,7 @@ body.welcome-removed .chat-input-container {
 
 textarea {
     flex: 1;
-    background: transparent;
+    background-color: var(--input-bg) !important; /* Ensure opaque background for textarea */
     border: none;
     padding: 12px 16px;
     color: var(--input-text);

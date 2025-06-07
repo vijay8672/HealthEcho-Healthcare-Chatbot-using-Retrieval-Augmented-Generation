@@ -4,8 +4,13 @@ Optimized for performance with local document processing and vector search.
 """
 import os
 import time
+import asyncio
 from pathlib import Path
 from dotenv import load_dotenv
+import multiprocessing
+
+# Must be at the very top for Windows multiprocessing
+multiprocessing.set_start_method('spawn', force=True)
 
 # Load environment variables from .env file
 load_dotenv()
@@ -18,6 +23,9 @@ if not os.getenv("GROQ_API_KEY"):
 from flask import Flask, render_template, request, jsonify, session
 from flask_cors import CORS
 from markdown import markdown
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+import uvicorn
 
 from src.utils.logger import get_logger
 from src.chain.chain_builder import ChainBuilder
@@ -29,17 +37,17 @@ from src.document_processing.training_pipeline import TrainingPipeline
 from src.auth.auth_service import AuthService
 from src.utils.email_service import EmailService
 from src.config import HR_EMAILS, ENABLE_EMAIL_ESCALATION, GROQ_API_KEY
+from src.config import REDIS_HOST, REDIS_PORT, REDIS_PASSWORD
+from src.cache.redis_cache import RedisCache
 
-def mask_key(key):
-    """Mask an API key for safe display."""
-    if not key or len(key) < 8:
-        return "***"
-    return key[:5] + "..." + key[-3:]
+# Initialize Redis cache
+redis_cache = RedisCache()
 
+# Initialize FastAPI app
+fastapi_app = FastAPI()
+
+# Initialize logger
 logger = get_logger(__name__)
-logger.info("GROQ_API_KEY loaded: %s", mask_key(GROQ_API_KEY))
-logger.info("GROQ_MODEL: %s", os.getenv('GROQ_MODEL', 'llama3-8b-8192'))
-logger.info("HF_TOKEN loaded: %s", mask_key(os.getenv('HF_TOKEN')))
 
 # Global variables for lazy initialization
 _chain_builder = None
@@ -92,9 +100,22 @@ def get_email_service():
         _email_service = EmailService()
     return _email_service
 
+def run_async_in_sync(coro):
+    """Helper function to run async functions in sync context."""
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, coro)
+                return future.result()
+        else:
+            return loop.run_until_complete(coro)
+    except RuntimeError:
+        return asyncio.run(coro)
+
 def initialize_services():
     """Initialize core services only once."""
-    # Only initialize in the main process
     if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
         logger.info("Initializing core services...")
         
@@ -165,17 +186,57 @@ def create_app():
 
             # Process query
             query_start_time = time.time()
+            
+            logger.debug(f"_chain_builder before get_chain_builder: {_chain_builder}")
             chain_builder = get_chain_builder()
-            response = chain_builder.run_chain(
-                user_query,
-                device_id,
-                files_info=files_info
-            )
+            logger.debug(f"chain_builder instance after get_chain_builder: {chain_builder}")
 
-            response_content = response["content"]
-            language = response["language"]
-            sources = response["sources"]
-            escalated = response.get("escalated", False)
+            # Check cache first using sync method
+            cached = redis_cache.get_cached_query_sync(user_query)
+            if cached:
+                logger.debug("Returning cached response from sync cache")
+                return jsonify({
+                    "response": cached["content"],
+                    "sources": cached.get("sources", []),
+                    "language": cached.get("language", "en"),
+                    "response_time": time.time() - query_start_time,
+                    "escalated": cached.get("escalated", False)
+                })
+
+            # Call the asynchronous run_chain method using the synchronous wrapper
+            result = run_async_in_sync(
+                chain_builder.run_chain(
+                    user_query,
+                    device_id,
+                    files_info=files_info
+                )
+            )
+            
+            logger.debug(f"Raw result from run_chain_sync (now run_async_in_sync): {result}")
+
+            # The result from run_async_in_sync is already the awaited response
+            response = result
+
+            logger.debug(f"Raw response from ChainBuilder (after async check): {response}")
+
+            # Handle case where response from chain builder is None or not a dict
+            if response is None or not isinstance(response, dict):
+                logger.error(f"Chain builder in Flask route returned unexpected response type: {type(response)}. Value: {response}")
+                response_content = "I'm sorry, I encountered an internal issue and couldn't process your request."\
+                                   " Please try again later or simplify your query."
+                language = "en"
+                sources = []
+                escalated = False
+            else:
+                # Extract response data safely
+                response_content = response.get("content", "")
+                language = response.get("language", "en")
+                sources = response.get("sources", [])
+                escalated = response.get("escalated", False)
+
+            # If response_content is still empty after extraction, provide a generic message
+            if not response_content.strip():
+                response_content = "I'm sorry, I couldn't find a helpful response. Please try rephrasing your query."
 
             # Apply markdown formatting
             response_content = markdown(response_content)
@@ -195,13 +256,18 @@ def create_app():
                 files_info=files_info
             )
 
-            return jsonify({
+            result = {
                 "response": response_content,
                 "sources": sources,
                 "language": language,
                 "response_time": time.time() - query_start_time,
                 "escalated": escalated
-            })
+            }
+
+            # Cache the result using sync method
+            redis_cache.cache_query_sync(user_query, result)
+
+            return jsonify(result)
 
         except Exception as e:
             import traceback
@@ -215,7 +281,7 @@ def create_app():
                 "error": "An error occurred while processing your request.",
                 "message": "Please try again later or simplify your query.",
                 "details": safe_error if len(safe_error) < 200 else safe_error[:197] + "..."
-            }), 500
+            })
 
     @app.route("/api/speech-to-text", methods=["POST"])
     def speech_to_text_api():
@@ -432,7 +498,6 @@ def create_app():
             logger.error(f"Error processing HR files: {e}")
             return jsonify({"error": str(e)}), 500
 
-
     @app.route("/api/register", methods=["POST"])
     def register():
         """Register a new user."""
@@ -469,7 +534,6 @@ def create_app():
                 "success": False,
                 "message": f"An error occurred: {str(e)}"
             }), 500
-
 
     @app.route("/api/login", methods=["POST"])
     def login():
@@ -508,7 +572,6 @@ def create_app():
                 "message": f"An error occurred: {str(e)}"
             }), 500
 
-
     @app.route("/api/logout", methods=["POST"])
     def logout():
         """Log out a user."""
@@ -527,7 +590,6 @@ def create_app():
                 "success": False,
                 "message": f"An error occurred: {str(e)}"
             }), 500
-
 
     @app.route("/api/user", methods=["GET"])
     def get_user():
@@ -693,10 +755,151 @@ def create_app():
 
     return app
 
+# FastAPI routes
+@fastapi_app.post("/api/query")
+async def handle_query(request: Request):
+    """FastAPI endpoint for processing queries."""
+    try:
+        data = await request.json()
+        user_query = data.get("query", "")
+        device_id = data.get("device_id", "unknown")
+        files_info = data.get("files_info", [])
+
+        # Check cache first
+        cached = await redis_cache.get_cached_query(user_query)
+        if cached:
+            return JSONResponse(content={"cached": True, "data": cached})
+
+        # Process any unprocessed files first
+        if files_info:
+            logger.info(f"Processing {len(files_info)} files for query")
+            pipeline = TrainingPipeline()
+
+            for file_info in files_info:
+                file_name = file_info.get("name")
+                if file_name:
+                    raw_dir = Path(os.path.dirname(__file__)) / "data" / "raw"
+                    file_path = raw_dir / file_name
+                    processed_marker = Path(os.path.dirname(__file__)) / "data" / "processed" / file_name
+                    
+                    if file_path.exists() and not processed_marker.exists():
+                        logger.info(f"Processing file for query: {file_name}")
+                        pipeline.process_file(file_path)
+                    else:
+                        logger.info(f"File already processed or not found: {file_name}")
+
+        # Process query using chain builder
+        chain_builder = get_chain_builder()
+        
+        # Get response from chain builder
+        response = await chain_builder.run_chain(user_query, device_id, files_info=files_info)
+        
+        if not response:
+            return JSONResponse(
+                status_code=500,
+                content={"error": "Failed to generate response"}
+            )
+
+        # Format response
+        if isinstance(response, dict):
+            response_content = response.get("content", "")
+            language = response.get("language", "en")
+            sources = response.get("sources", [])
+            escalated = response.get("escalated", False)
+        else:
+            response_content = str(response)
+            language = "en"
+            sources = []
+            escalated = False
+
+        # Apply markdown formatting
+        response_content = markdown(response_content)
+
+        # Save conversation history
+        history_manager = get_history_manager()
+        history_manager.add_interaction(
+            user_query=user_query,
+            assistant_response=response_content,
+            language=language,
+            device_id=device_id,
+            sources=sources,
+            files_info=files_info
+        )
+
+        result = {
+            "response": response_content,
+            "sources": sources,
+            "language": language,
+            "escalated": escalated
+        }
+        
+        # Cache the result
+        await redis_cache.cache_query(user_query, result)
+        
+        return JSONResponse(content={"cached": False, "data": result})
+
+    except Exception as e:
+        import traceback
+        error_type = type(e).__name__
+        error_trace = traceback.format_exc()
+        logger.error(f"Error processing query: {error_type}: {e}")
+        logger.error(f"Traceback: {error_trace}")
+        
+        safe_error = str(e).replace(os.path.dirname(__file__), "[APP_PATH]")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "An error occurred while processing your request.",
+                "message": "Please try again later or simplify your query.",
+                "details": safe_error if len(safe_error) < 200 else safe_error[:197] + "..."
+            }
+        )
+
+@fastapi_app.get("/api/cache/stats")
+async def cache_stats():
+    """FastAPI endpoint for getting cache statistics."""
+    try:
+        stats = await redis_cache.get_cache_stats()
+        return JSONResponse(content=stats)
+    except Exception as e:
+        logger.error(f"Error getting cache stats: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Failed to retrieve cache statistics"}
+        )
+
+def run_fastapi():
+    """Run the FastAPI server."""
+    import uvicorn
+    uvicorn.run(
+        "app:fastapi_app",
+        host="0.0.0.0",
+        port=8000,
+        log_level="info",
+        access_log=True,
+        reload=False
+    )
+
 if __name__ == "__main__":
-    # Initialize services before creating the app
+    # Initialize services and start FastAPI (only once by the main process)
     initialize_services()
     
-    # Create and run the application
-    app = create_app()
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    # Start FastAPI in a separate process
+    fastapi_process = multiprocessing.Process(target=run_fastapi)
+    fastapi_process.daemon = True  # Make it a daemon process
+    fastapi_process.start()
+
+    # Create Flask app
+    flask_app = create_app()
+
+    try:
+        # Run Flask app, explicitly disable reloader to avoid multiprocessing conflicts
+        flask_app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)
+    except KeyboardInterrupt:
+        print("\nShutting down servers...")
+    finally:
+        # Clean up FastAPI process when Flask exits
+        if fastapi_process.is_alive():
+            fastapi_process.terminate()
+            fastapi_process.join(timeout=5)
+    
